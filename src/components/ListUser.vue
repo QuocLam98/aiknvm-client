@@ -13,7 +13,8 @@ interface User {
   credit: number
   creditUsed: number,
   phone: string,
-  confirm: boolean
+  confirm: boolean,
+  active?: boolean // thêm trạng thái active (giả định backend trả về)
 }
 
 interface UserDetail {
@@ -161,13 +162,14 @@ const updateUserDetail = async () => {
 }
 
 const confirmDelete = async (id: string) => {
-  const confirmed = confirm('Bạn có chắc chắn muốn xóa người dùng này không?')
+  const confirmed = confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN người dùng này không? Hành động này không thể hoàn tác!')
   if (!confirmed) return
 
   try {
-    await axios.put(`${urlServer}/delete-user/${id}`)
+    // Hard delete (xóa vĩnh viễn)
+    await axios.delete(`${urlServer}/hard-delete-user/${id}`)
     users.value = users.value.filter(user => user._id !== id)
-    toast.success('Xóa thành công user!', {
+    toast.success('Đã xóa vĩnh viễn user!', {
       position: 'top',
       duration: 3000
     });
@@ -176,10 +178,34 @@ const confirmDelete = async (id: string) => {
     }
     await fetchUsers()
   } catch (error) {
-    toast.error('Lỗi xóa người dùng thất bại!', {
+    toast.error('Xóa vĩnh viễn người dùng thất bại!', {
       position: 'top',
       duration: 3000
     });
+  }
+}
+
+// Toggle active user
+const toggleActive = async (user: User) => {
+  const original = user.active
+  user.active = !original
+  try {
+    // Backend cung cấp endpoint PUT /delete-user/:id để cập nhật active
+    const res = await axios.put(`${urlServer}/delete-user/${user._id}`, { active: user.active })
+    // Đồng bộ lại theo response (phòng trường hợp backend sửa giá trị)
+    if (res?.data?.active !== undefined) {
+      user.active = res.data.active
+    }
+    toast.success(`Đã ${user.active ? 'kích hoạt' : 'vô hiệu hóa'} user`, {
+      position: 'top',
+      duration: 2500
+    })
+  } catch (e) {
+    user.active = original // rollback
+    toast.error('Cập nhật trạng thái thất bại!', {
+      position: 'top',
+      duration: 3000
+    })
   }
 }
 
@@ -218,7 +244,7 @@ const changePerPage = () => {
               <th>Email</th>
               <th>Số điện thoại</th>
               <th>Loại tài khoản</th>
-              <th>Tài khoản xác thực</th>
+              <th>Active</th>
               <th>Ngày tạo</th>
               <th></th>
             </tr>
@@ -230,7 +256,12 @@ const changePerPage = () => {
               <td>{{ user.email }}</td>
               <td class="text-center">{{ user.phone }}</td>
               <td>{{ user.role }}</td>
-              <td>{{ user.confirm === false ? 'Chưa xác thực' : "Đã xác thực" }}</td>
+              <td>
+                <label class="inline-flex items-center cursor-pointer">
+                  <input type="checkbox" class="sr-only peer" :checked="user.active" @change="toggleActive(user)">
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-300 peer-checked:bg-green-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                </label>
+              </td>
               <td>{{ formatDate(user.createdAt) }}</td>
               <td>
                 <button class="btn btn-ghost btn-xs" @click="getUserDetail(user._id)">
