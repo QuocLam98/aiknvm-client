@@ -1,0 +1,14 @@
+.verify {
+  width: 100%;
+  color: black;
+  background-color: f2f2f2;
+}
+/* .card {
+  border: 1px solid black;
+  padding: 16px;
+  background-color: #f2f2f2 !important;
+} */
+ .sendemail {
+  background: white;
+  border: 1px solid black;
+ }

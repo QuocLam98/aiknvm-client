@@ -1,0 +1,406 @@
+<script setup lang="ts">
+import '../assets/mainhome.css'
+import { ref } from 'vue';
+import { useHead } from '@vueuse/head'
+import ZaloHelper from './ZaloHelper.vue';
+
+
+useHead({
+  title: 'Aiknvm Trả lời mọi câu hỏi của bạn',
+  meta: [
+    {
+      name: 'description',
+      content: 'AIknvm là nền tảng cung cấp dịch vụ trí tuệ nhân tạo, hỗ trợ làm việc và học tập, giúp giảm thời gian và hiệu quả.'
+    },
+    {
+      property: 'og:title',
+      content: 'AIknvm - Trí tuệ nhân tạo Việt Nam'
+    }
+  ]
+})
+// Xác định kiểu dữ liệu cho openIndex
+const openIndex = ref<number | null>(null);
+
+// Xác định kiểu dữ liệu cho mảng items
+interface AccordionItem {
+  title: string;
+  content: string;
+}
+
+const items = ref<AccordionItem[]>([
+  {
+    title: "Tại sao nên chọn AIknvm ?",
+    content: "AIknvm là AI đầu tiên tại Việt Nam tập trung sử dụng sức mạnh trí tuệ nhân tạo để hỗ trợ làm việc và học tập, giúp giảm thời gian và hiệu quả"
+  },
+  {
+    title: "AIknvm có cung cấp dịch vụ miễn phí không ?",
+    content: "Có. AIknvm cung cấp dịch vụ dùng thử miễn phí với 1 credit để bạn trải nghiệm AI Chatbot trước khi quyết định sử dụng gói dịch vụ trả phí. Lưu ý là mỗi tài khoản chỉ có thể đăng ký sử dụng miễn phí 1 lần duy nhất."
+  },
+  {
+    title: "Tôi dùng thử miễn phí thì có bị giới hạn tính năng không?",
+    content: "Không, bạn có thể sử dụng AIknvm miễn phí với 1 credit với đầy đủ tính năng tuy nhiên tốc độ xử lý sẽ ở mức chậm. Trong thời gian này, bạn có thể trải nghiệm đầy đủ các tính năng của AIknvm để xem liệu có phù hợp với nhu cầu của bạn hay không. Nếu bạn muốn tiếp tục sử dụng sau khi kết thúc thời gian dùng thử, bạn có thể chọn các gói dịch vụ phù hợp với bạn để tiếp tục tận hưởng các ưu đãi và tính năng của AIknvm."
+  },
+  {
+    title: 'Tôi dùng thử miễn phí có được hỗ trợ không?',
+    content: 'Có. Đội ngũ của AIknvm luôn sẵn sàng để được hỗ trợ bạn bất cứ vấn đề nào liên quan đến sản phảm và dịch vụ của chúng tôi'
+  },
+  {
+    title: 'Cách tính credit như thế nào?',
+    content: 'AIknvm được xây dựng trên nền tảng trí tuệ nhân tạo ChatGPT. Do đó, chúng tôi quy định 1 credit tương đương với 1 USD. Khi bạn sử dụng AIknvm để trả lời các câu hỏi của bạn, theo cách tính phí của ChatGPT, cứ 750 từ = 0.002 đô. Vậy với 50.000đ bạn có thể nhận câu trả lời của AI đến 750.000 từ. Bình quân nếu mỗi câu trả lời là 50 từ thì mỗi ngày AI AIknvm có thể giúp bạn trả lời khoảng 15.000 câu hỏi.'
+  },
+  {
+    title: 'Cách thức thanh toán khi nâng cấp lên gói trả phí ?',
+    content: 'Để thanh toán, bạn có thể sử dụng các phương thức thanh toán như chuyển khoản ngân hàng, thanh toán qua ví điện tử. Tài khoản của bạn sẽ được kích hoạt ngay khi chúng tôi nhận được chuyển khoản'
+  },
+  {
+    title: 'Đơn hàng của tôi sẽ được duyệt trong bao lâu ?',
+    content: 'Tài khoản của bạn sẽ được cập nhật trong khoảng từ 10 đến 15 phút kể từ khi chúng tôi nhận được thông tin thanh toán (kể cả chủ nhật và các ngày lễ tết).'
+  },
+  {
+    title: 'Điều gì sẽ xảy ra khi dùng hết credit ?',
+    content: 'Khi sử dụng hết credit, để có thể tiếp tục sử dụng dịch vụ AIknvm, bạn có thẻ thanh toán mua thêm credit. Nếu không, AIknvm sẽ không thể thực hiện các chức năng như trước và ngừng hỗ trợ.'
+  }
+]);
+
+// Hàm mở/đóng Accordion
+const toggleAccordion = (index: number) => {
+  openIndex.value = openIndex.value === index ? null : index;
+}
+</script>
+
+<template>
+  <main id="main-home">
+    <div class="about">
+      <div class="container-flur">
+        <div class="main-about gap-24">
+          <!-- <div class="h-[32rem]">
+            <WindowChat />
+          </div> -->
+          <div class="flex flex-col">
+            <strong class="text-strong text-black">
+              Chào mừng bạn đến với nền tảng AIknvm Web –
+              Trợ lý ảo thông minh, giúp bạn giải quyết mọi vấn đề từ học tập, công việc đến cuộc sống thường nhật.
+            </strong>
+            <strong class="text-strong text-black">
+              Với giao diện thân thiện, sử dụng dễ dàng, bạn chỉ cần đặt câu hỏi –
+              AIknvm sẽ mang lại câu trả lời chính xác, nhanh chóng và hiệu quả
+            </strong>
+            <strong class="text-strong text-black">
+              Tiết kiệm thời gian – Chi phí tối ưu – Tăng chất lượng công việc vượt trội.
+              Trải nghiệm ngay – Không cần chờ đợi!
+            </strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div class="benefit">
+    <span class="bg-benefit"></span>
+    <div class="container-benefit">
+      <div class="benefit-cotent">
+        <h1>Lợi ích vượt trội</h1>
+        <div class="flex gap-8 benefit-items">
+          <div class="card-benefit">
+            <span class="icon-benefit">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                stroke="currentColor" class="size-50">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+              </svg>
+
+            </span>
+            <h1>
+              Tiết kiệm thời gian
+            </h1>
+            <span>
+              Nhận câu trả lời, giải pháp tức thì chỉ trong vài giây – không cần tìm kiếm nhiều.
+            </span>
+          </div>
+          <div class="card-benefit">
+            <span class="icon-benefit">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                stroke="currentColor" class="size-50">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+
+            </span>
+            <h1>
+              Tiết kiệm chi phí
+            </h1>
+            <span>
+              Không tốn tiền thuê chuyên gia – ChatGPT hỗ trợ như một trợ lý ảo thông minh phục vụ bạn suốt ngày đêm.
+            </span>
+          </div>
+          <div class="card-benefit">
+            <span class="icon-benefit">
+              <svg xmlns="http://www.w3.org/2000/svg" class="size-50" viewBox="0 0 2048 2048">
+                <path fill="currentColor"
+                  d="m1155 1920l128 128H256V256h512q0-53 20-99t55-82t81-55t100-20q53 0 99 20t82 55t55 81t20 100h512v1027l-128 128V384h-128v256H512V384H384v1536zM640 384v128h768V384h-256V256q0-27-10-50t-27-40t-41-28t-50-10q-27 0-50 10t-40 27t-28 41t-10 50v128zm1389 1069l-557 558l-269-270l90-90l179 178l467-466z" />
+              </svg>
+            </span>
+            <h1>
+              Nâng cao chất lượng công việc
+            </h1>
+            <span>
+              Đưa ra các giải pháp tối ưu, nội dung tin cậy, phân tích dữ liệu chuyên sâu nhằm nâng cao chất lượng và
+              tăng hiệu suất gấp nhiều lần!
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="feature">
+    <div class="container-flur">
+      <div class="feature-content">
+        <h1>
+          Tính năng của ChatBot AIknvm
+        </h1>
+        <div class="feature-list-item">
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M9.5 3a7.5 7.5 0 0 0-6.797 10.675a68 68 0 0 0-.681 3.142a.996.996 0 0 0 1.153 1.17c.623-.11 1.978-.36 3.236-.65A7.5 7.5 0 1 0 9.5 3m-.038 16a7.47 7.47 0 0 0 5.1 2a7.5 7.5 0 0 0 3.088-.663c1.043.244 2.186.488 2.913.64a1.244 1.244 0 0 0 1.467-1.5c-.162-.703-.418-1.795-.671-2.803A7.503 7.503 0 0 0 17.015 6.41a8.4 8.4 0 0 1 .8 2.048a6 6 0 0 1 2.747 5.042a5.96 5.96 0 0 1-.665 2.747l-.13.253l.07.276c.228.895.467 1.9.642 2.65a112 112 0 0 1-2.74-.61l-.264-.062l-.243.121c-.804.4-1.71.625-2.67.625a6 6 0 0 1-2.92-.756a8.5 8.5 0 0 1-2.18.256" />
+            </svg>
+            <span>Trả lời theo kịch bản hoặc theo ngữ cảnh</span>
+          </div>
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 20 20">
+              <g fill="currentColor" fill-rule="evenodd" clip-rule="evenodd">
+                <path
+                  d="M5.604 5.45a6.44 6.44 0 0 0-1.883 5.278a.5.5 0 0 1-.994.105a7.44 7.44 0 0 1 2.175-6.096c2.937-2.897 7.675-2.85 10.582.098s2.888 7.685-.05 10.582a7.43 7.43 0 0 1-5.097 2.142a7.5 7.5 0 0 1-2.14-.271a.5.5 0 0 1 .266-.964a6.5 6.5 0 0 0 1.856.235a6.42 6.42 0 0 0 4.413-1.854c2.541-2.506 2.562-6.61.04-9.168s-6.627-2.594-9.168-.088" />
+                <path
+                  d="M3.594 11.363a.5.5 0 0 1-.706.04l-1.72-1.53a.5.5 0 1 1 .664-.746l1.72 1.53a.5.5 0 0 1 .042.706" />
+                <path
+                  d="M2.82 11.3a.5.5 0 0 0 .7.1l2-1.5a.5.5 0 1 0-.6-.8l-2 1.5a.5.5 0 0 0-.1.7M10 6.5a.5.5 0 0 1 .5.5v3.5a.5.5 0 0 1-1 0V7a.5.5 0 0 1 .5-.5" />
+                <path d="M13.5 10.5a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 1 .5.5" />
+              </g>
+            </svg>
+            <span>Thời gian trả lời nhanh chóng</span>
+          </div>
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
+              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <path stroke-dasharray="40" stroke-dashoffset="40"
+                  d="M10.76 13.24c-2.34 -2.34 -2.34 -6.14 0 -8.49c2.34 -2.34 6.14 -2.34 8.49 0c2.34 2.34 2.34 6.14 0 8.49c-2.34 2.34 -6.14 2.34 -8.49 0Z">
+                  <animate fill="freeze" attributeName="stroke-dashoffset" dur="0.5s" values="40;0" />
+                </path>
+                <path stroke-dasharray="12" stroke-dashoffset="12" d="M10.5 13.5l-7.5 7.5">
+                  <animate fill="freeze" attributeName="stroke-dashoffset" begin="0.5s" dur="0.2s" values="12;0" />
+                </path>
+              </g>
+            </svg>
+            <span>Tìm kiếm dữ liệu trên các nguồn tài nguyên</span>
+          </div>
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
+              <g fill="none">
+                <path
+                  d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z" />
+                <path fill="currentColor"
+                  d="M17.255 1.625a1 1 0 0 1 1.412-.078A9.98 9.98 0 0 1 22 9c0 5.091-3.804 9.294-8.725 9.92l-.275.03V20h3a1 1 0 0 1 .117 1.993L16 22H8a1 1 0 0 1-.117-1.993L8 20h3v-1.05a10 10 0 0 1-7.333-4.42a1 1 0 1 1 1.666-1.107a8 8 0 0 0 6.36 3.571l.318.006a8 8 0 0 0 5.322-13.963a1 1 0 0 1-.078-1.412M12 2a7 7 0 1 1 0 14a7 7 0 0 1 0-14m0 2a5 5 0 1 0 0 10a5 5 0 0 0 0-10" />
+              </g>
+            </svg>
+            <span>Hỗ trợ đa ngôn ngữ</span>
+          </div>
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
+              <g fill="none" fill-rule="evenodd">
+                <path
+                  d="m12.594 23.258l-.012.002l-.071.035l-.02.004l-.014-.004l-.071-.036q-.016-.004-.024.006l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.016-.018m.264-.113l-.014.002l-.184.093l-.01.01l-.003.011l.018.43l.005.012l.008.008l.201.092q.019.005.029-.008l.004-.014l-.034-.614q-.005-.019-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.003-.011l.018-.43l-.003-.012l-.01-.01z" />
+                <path fill="currentColor"
+                  d="M6 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-5a1 1 0 1 0-2 0v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h8a1 1 0 1 0 0-2zm15.358 3.045a1 1 0 0 0 .375-1.363a1.01 1.01 0 0 0-1.364-.375c-.353.2-.694.424-1.03.65a30 30 0 0 0-2.463 1.847c-1.642 1.366-3.614 3.29-5.239 5.718a10 10 0 0 0-1.746-1.784c-.427-.333-.902-.66-1.415-.846h-.001a1 1 0 0 0-.689 1.878c.025.01.37.15.876.545c.578.45 1.376 1.239 2.146 2.557a1 1 0 0 0 1.733-.01c1.584-2.791 3.787-5 5.614-6.52c.91-.757 1.72-1.336 2.298-1.724c.295-.199.595-.394.904-.572Z" />
+              </g>
+            </svg>
+            <span>Tùy chọn chuyên sâu theo lĩnh vực</span>
+          </div>
+          <div class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">
+              <path fill="none" stroke="currentColor" stroke-dasharray="64" stroke-dashoffset="64"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 2l-9 3.5v6.5c0 3.5 3.5 9 8 10c4.5 -1 8 -6.5 8 -10v-6.5l-8 -3.5Z">
+                <animate fill="freeze" attributeName="stroke-dashoffset" dur="0.6s" values="64;0" />
+              </path>
+            </svg>
+            <span>Bảo mật cao</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="price">
+    <span class="price-bg"></span>
+    <div class="container-benefit">
+      <div class="price-content">
+        <h1>
+          Bảng giá dịch vụ
+        </h1>
+        <div class="price-list">
+          <div class="price-item">
+            <div class="price-item-header bg-blue-500 text-white">
+              Nhận 1 credits
+            </div>
+            <div class="price-item-title text-black">
+              Miễn phí
+            </div>
+            <div class="price-item-cotent">
+              <ul>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Hỏi mọi thứ trên ChatGPT
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> chỉ đăng ký 1 lần duy nhất với 1 tài khoản
+                </li>
+              </ul>
+              <!-- <button class="btn btn-active btn-primary">Đăng ký ngay</button> -->
+            </div>
+          </div>
+          <div class="price-item">
+            <div class="price-item-header bg-blue-500 text-white">
+              Nhận 2 credits
+            </div>
+            <div class="price-item-title text-black">
+              50.000 vnđ
+            </div>
+            <div class="price-item-cotent">
+              <ul>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Viết bất kì nội dung nào theo ý muốn của bạn
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Dịch thuật văn bản theo nhu cầu
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Tìm nguồn tài liệu chính xác
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Còn nhiều tính năng khác ....
+                </li>
+              </ul>
+              <!-- <button class="btn btn-active btn-primary">Đăng ký ngay</button> -->
+            </div>
+          </div>
+          <div class="price-item">
+            <div class="price-item-header bg-blue-500 text-white">
+              Nhận 4 credits
+            </div>
+            <div class="price-item-title text-black">
+              100.000 vnđ
+            </div>
+            <div class="price-item-cotent">
+              <ul>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Viết bất kì nội dung nào theo ý muốn của bạn
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Hỏi thoải mái trong một vài tháng
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Dịch thuật văn bản theo nhu cầu
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Tìm nguồn tài liệu chính xác
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Còn nhiều tính năng khác ....
+                </li>
+              </ul>
+              <!-- <button class="btn btn-active btn-primary">Đăng ký ngay</button> -->
+            </div>
+          </div>
+          <div class="price-item">
+            <div class="price-item-header bg-blue-500 text-white">
+              Nhận 6 credits
+            </div>
+            <div class="price-item-title text-black">
+              150.000 vnđ
+            </div>
+            <div class="price-item-cotent">
+              <ul>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Viết bất kì nội dung nào theo ý muốn của bạn
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Bạn có thể yêu cầu vẽ tranh tạo ảnh lô gô theo ý muốn
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Dịch thuật văn bản theo nhu cầu
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Tìm nguồn tài liệu chính xác
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Còn nhiều tính năng khác ....
+                </li>
+              </ul>
+              <!-- <button class="btn btn-active btn-primary">Đăng ký ngay</button> -->
+            </div>
+          </div>
+          <div class="price-item">
+            <div class="price-item-header bg-blue-500 text-white">
+              Nhận 10 credits
+            </div>
+            <div class="price-item-title text-black">
+              200.000 vnđ
+            </div>
+            <div class="price-item-cotent">
+              <ul>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Viết bất kì nội dung nào theo ý muốn của bạn
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Bạn có thể trở thành nhà thiết kế 5D chuyên nghiệp vượt xa đối thủ với kĩ năng ra lệnh chuyên nghiệp
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Dịch thuật văn bản theo nhu cầu
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Tìm nguồn tài liệu chính xác
+                </li>
+                <li>
+                  <div aria-label="info" class="status status-info"></div> Còn nhiều tính năng khác ....
+                </li>
+              </ul>
+              <!-- <button class="btn btn-active btn-primary">Đăng ký ngay</button> -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="faq">
+    <div class="container-flur">
+      <div class="faq-cotent">
+        <h1>
+          FAQs - Câu hỏi thường gặp
+        </h1>
+        <div>
+          <div v-for="(item, index) in items" :key="index"
+            class="collapse collapse-plus border border-base-300 bg-base-200"
+            :class="{ 'collapse-open': openIndex === index }">
+            <div class="collapse-title font-semibold" @click="toggleAccordion(index)">
+              <span>{{ item.title }}</span>
+            </div>
+            <div class="collapse-content text-sm">
+              <span>{{ item.content }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ZaloHelper />
+</template>

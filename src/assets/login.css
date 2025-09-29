@@ -1,0 +1,67 @@
+.login {
+    background-color: #EEEEEE;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding-top: 64px;
+}
+.login-form {
+  background-color: white;
+  padding: 32px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: black;
+  width: 500px;
+}
+.login-title {
+  color: black;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 600;
+
+}
+.login h1 {
+    font-size: 64px;
+    font-weight: bold;
+    color: black;
+    padding-bottom: 16px;
+}
+.login-form input {
+  background-color: white !important;
+  width: 100% !important;
+  border: var(--border) solid #c2bfbf !important;
+}
+
+.login-form input:focus {
+  --input-color: #ccc;
+}
+/* Hiệu ứng fade */
+.fade-enter-active, .fade-leave-active {
+    transition: opacity 0.3s ease;
+  }
+  
+  .fade-enter-from, .fade-leave-to {
+    opacity: 0;
+  }
+.red-span {
+  color: var(--color-red-500);
+}
+
+.btn {
+    &:is(:disabled, [disabled], .btn-disabled) {
+        &:not(.btn-link, .btn-ghost) {
+            background-color: var(--color-primary);
+            box-shadow: none;
+            color: white;
+        }
+    }
+}
+@media (min-width: 300px) and (max-width: 600px)
+{
+ .login-form {
+  width: 100%;
+ }
+}
