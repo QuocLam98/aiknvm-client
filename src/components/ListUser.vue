@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, reactive } from 'vue'
+import BasePagination from './BasePagination.vue'
 import axios from 'axios'
 import debounce from 'lodash.debounce'
 import { useToast } from 'vue-toast-notification';
@@ -60,21 +61,7 @@ const userDetail = reactive({
 })
 const urlServer = import.meta.env.VITE_URL_SERVER
 
-const totalPages = computed(() => Math.ceil(totalItems.value / perPage.value))
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const range = 2
-  for (let i = 1; i <= totalPages.value; i++) {
-    if (
-      i <= range ||
-      i > totalPages.value - range ||
-      (i >= currentPage.value - range && i <= currentPage.value + range)
-    ) {
-      pages.push(i)
-    }
-  }
-  return pages
-})
+// Pagination now handled by BasePagination component
 
 const fetchUsers = async () => {
   loading.value = true
@@ -219,9 +206,7 @@ watch([currentPage, perPage], fetchUsers)
 
 onMounted(fetchUsers)
 
-const changePerPage = () => {
-  currentPage.value = 1
-}
+// Per-page change handled via BasePagination emit which resets currentPage
 </script>
 
 <template>
@@ -302,35 +287,15 @@ const changePerPage = () => {
         </table>
       </div>
 
-      <!-- Pagination controls -->
-      <div class="flex justify-between items-center mt-4" v-if="totalItems > 0">
-        <div class="join">
-          <button class="join-item btn" :disabled="currentPage === 1" @click="currentPage--">
-            Prev
-          </button>
-
-          <button v-if="currentPage > 3" class="join-item btn" @click="currentPage = 1">1</button>
-          <span v-if="currentPage > 3" class="join-item btn">...</span>
-
-          <button v-for="page in visiblePages" :key="page" class="join-item btn"
-            :class="{ 'btn-active': page === currentPage }" @click="currentPage = page">
-            {{ page }}
-          </button>
-
-          <span v-if="currentPage < totalPages - 2" class="join-item btn">...</span>
-          <button v-if="currentPage < totalPages - 2" class="join-item btn" @click="currentPage = totalPages">
-            {{ totalPages }}
-          </button>
-
-          <button class="join-item btn" :disabled="currentPage === totalPages" @click="currentPage++">
-            Next
-          </button>
-        </div>
-
-        <!-- Chọn số bản ghi / trang -->
-        <select v-model="perPage" @change="changePerPage" class="select select-bordered">
-          <option v-for="option in perPageOptions" :key="option" :value="option">{{ option }}</option>
-        </select>
+      <div class="mt-4" v-if="totalItems > 0">
+        <BasePagination
+          :current-page="currentPage"
+          :per-page="perPage"
+            :total-items="totalItems"
+            :per-page-options="perPageOptions"
+            @update:page="val => currentPage = val"
+            @update:perPage="val => { perPage = val; currentPage = 1 }"
+        />
       </div>
 
       <!-- Nếu không có dữ liệu -->
