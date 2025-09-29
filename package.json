@@ -12,7 +12,6 @@
     "postinstall": "bun scripts/gen-version.js"
   },
   "dependencies": {
-    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@iconify/tailwind4": "^1.0.6",
     "@tailwindcss/vite": "^4.0.11",
     "@types/lodash.debounce": "^4.0.9",
@@ -21,7 +20,6 @@
     "@vueuse/head": "^2.0.0",
     "axios": "^1.8.1",
     "bun-plugin-tailwind": "^0.0.15",
-    "firebase": "^12.2.1",
     "highlight.js": "^11.11.1",
     "lodash.debounce": "^4.0.8",
     "nanoid": "^5.1.5",

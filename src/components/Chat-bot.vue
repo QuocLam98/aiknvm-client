@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toast-notification';
 import { useRoute, useRouter } from 'vue-router'
@@ -51,6 +51,11 @@ const isBotTyping = ref(false);  // Trạng thái đang trả lời
 const urlServer = import.meta.env.VITE_URL_SERVER
 const botImage = import.meta.env.VITE_CREATE_IMAGE
 const botIdSelect = ref('')
+// Chọn model (Nhanh = gemini-2.5-flash (mặc định), Suy nghĩ = gemini-2.5-pro)
+const selectedModel = ref<string>('gemini-2.5-flash')
+// ID bot English từ env
+const botEnglishId = import.meta.env.VITE_BOT_ENGLISH
+const isEnglishBot = computed(() => getBotData.value?._id === botEnglishId)
 
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
@@ -166,6 +171,8 @@ const sendMessage = async () => {
     formData.append('fileType', previewFileType.value)
   }
   formData.append('bot', getBotData.value?._id || '')
+  // Gửi model người dùng chọn
+  formData.append('model', selectedModel.value)
   // User message
   isTyping.value = true // 👈 Bắt đầu gõ
 
@@ -205,7 +212,7 @@ const sendMessage = async () => {
   })
 
   try {
-    const response = await axios.post(`${urlServer}/create-message`, formData, {
+    const response = await axios.post(`${urlServer}/create-message-gemeni`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -728,25 +735,22 @@ const stopVoice = () => {
                 </button>
               </template>
 
-              <!-- Nút phát hoặc dừng âm thanh -->
-              <button v-if="!isPlaying" @click="handlePlay(message)" :disabled="isLoadingVoice" title="Phát âm thanh">
-                <svg v-if="!isLoadingVoice" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                  viewBox="0 0 16 16">
-                  <path fill="#000"
-                    d="M9 2.5a.5.5 0 0 0-.849-.358l-2.927 2.85H3.5a1.5 1.5 0 0 0-1.5 1.5v2.99a1.5 1.5 0 0 0 1.5 1.5h1.723l2.927 2.875A.5.5 0 0 0 9 13.5zm1.111 2.689a.5.5 0 0 1 .703-.08l.002.001l.002.002l.005.004l.015.013l.046.04q.055.05.142.142c.113.123.26.302.405.54c.291.48.573 1.193.573 2.148c0 .954-.282 1.668-.573 2.148a3.4 3.4 0 0 1-.405.541a3 3 0 0 1-.202.196l-.008.007h-.001s-.447.243-.703-.078a.5.5 0 0 1 .075-.7l.002-.002l-.001.001l.002-.001h-.001l.018-.016q.028-.025.085-.085a2.4 2.4 0 0 0 .284-.382c.21-.345.428-.882.428-1.63s-.218-1.283-.428-1.627a2.4 2.4 0 0 0-.368-.465l-.018-.016a.5.5 0 0 1-.079-.701m1.702-2.08a.5.5 0 1 0-.623.782l.011.01l.052.045q.072.063.201.195c.17.177.4.443.63.794c.46.701.92 1.733.92 3.069a5.5 5.5 0 0 1-.92 3.065c-.23.35-.46.614-.63.79a4 4 0 0 1-.252.24l-.011.01h-.001a.5.5 0 0 0 .623.782l.033-.027l.075-.065c.063-.057.15-.138.253-.245a6.4 6.4 0 0 0 .746-.936a6.5 6.5 0 0 0 1.083-3.614a6.54 6.54 0 0 0-1.083-3.618a6.5 6.5 0 0 0-.745-.938a5 5 0 0 0-.328-.311l-.023-.019l-.007-.006l-.002-.002zM10.19 5.89l-.002-.001Z" />
-                </svg>
-
-                <svg v-else class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                  viewBox="0 0 24 24">
-                  <path fill="#000" d="M12 2v2a8 8 0 1 1-8 8H2a10 10 0 1 0 10-10z" />
-                </svg>
-              </button>
-
-              <button v-else @click="stopVoice" title="Dừng âm thanh">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                  <path fill="#000" d="M6 6h12v12H6z" />
-                </svg>
-              </button>
+              <!-- Nút phát/dừng âm thanh chỉ hiển thị với bot English -->
+              <template v-if="isEnglishBot">
+                <button v-if="!isPlaying" @click="handlePlay(message)" :disabled="isLoadingVoice" title="Phát âm thanh">
+                  <svg v-if="!isLoadingVoice" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16">
+                    <path fill="#000" d="M9 2.5a.5.5 0 0 0-.849-.358l-2.927 2.85H3.5a1.5 1.5 0 0 0-1.5 1.5v2.99a1.5 1.5 0 0 0 1.5 1.5h1.723l2.927 2.875A.5.5 0 0 0 9 13.5zm1.111 2.689a.5.5 0 0 1 .703-.08l.002.001l.002.002l.005.004l.015.013l.046.04q.055.05.142.142c.113.123.26.302.405.54c.291.48.573 1.193.573 2.148c0 .954-.282 1.668-.573 2.148a3.4 3.4 0 0 1-.405.541a3 3 0 0 1-.202.196l-.008.007h-.001s-.447.243-.703-.078a.5.5 0 0 1 .075-.7l.002-.002l-.001.001l.002-.001h-.001l.018-.016q.028-.025.085-.085a2.4 2.4 0 0 0 .284-.382c.21-.345.428-.882.428-1.63s-.218-1.283-.428-1.627a2.4 2.4 0 0 0-.368-.465l-.018-.016a.5.5 0 0 1-.079-.701m1.702-2.08a.5.5 0 1 0-.623.782l.011.01l.052.045q.072.063.201.195c.17.177.4.443.63.794c.46.701.92 1.733.92 3.069a5.5 5.5 0 0 1-.92 3.065c-.23.35-.46.614-.63.79a4 4 0 0 1-.252.24l-.011.01h-.001a.5.5 0 0 0 .623.782l.033-.027l.075-.065c.063-.057.15-.138.253-.245a6.4 6.4 0 0 0 .746-.936a6.5 6.5 0 0 0 1.083-3.614a6.54 6.54 0 0 0-1.083-3.618a6.5 6.5 0 0 0-.745-.938a5 5 0 0 0-.328-.311l-.023-.019l-.007-.006l-.002-.002zM10.19 5.89l-.002-.001Z" />
+                  </svg>
+                  <svg v-else class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                    <path fill="#000" d="M12 2v2a8 8 0 1 1-8 8H2a10 10 0 1 0 10-10z" />
+                  </svg>
+                </button>
+                <button v-else @click="stopVoice" title="Dừng âm thanh">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                    <path fill="#000" d="M6 6h12v12H6z" />
+                  </svg>
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -792,6 +796,13 @@ const stopVoice = () => {
 
           <!-- Input + buttons -->
           <div class="flex w-full items-center">
+            <!-- Select Model -->
+            <div class="mr-2">
+              <select v-model="selectedModel" class="border border-gray-300 rounded px-2 py-1 text-sm text-black bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <option value="gemini-2.5-flash">Nhanh</option>
+                <option value="gemini-2.5-pro">Suy nghĩ</option>
+              </select>
+            </div>
             <!-- Input -->
             <textarea v-model="newMessage" @input="autoResize" @keydown="handleKeydown" @paste="handlePaste"
               @dblclick="handleDoubleClick" placeholder="please chat here..."
@@ -1013,6 +1024,7 @@ svg {
 .bot-desc {
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3; /* Tiêu chuẩn mới cho các trình duyệt hỗ trợ */
   /* Số dòng muốn hiển thị */
   -webkit-box-orient: vertical;
   overflow: hidden;

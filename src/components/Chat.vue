@@ -51,6 +51,8 @@ const newMessage = ref('')
 const isBotTyping = ref(false);  // Trạng thái đang trả lời
 const urlServer = import.meta.env.VITE_URL_SERVER
 const historyChat = ref('')
+// Chọn model (nhanh = gemini-2.5-flash (mặc định), Suy nghĩ = gemini-2.5-pro)
+const selectedModel = ref<string>('gemini-2.5-flash')
 
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
@@ -165,6 +167,8 @@ const sendMessage = async () => {
   if (historyChat.value) {
     formData.append('historyChat', historyChat.value)
   }
+  // Gửi model người dùng chọn
+  formData.append('model', selectedModel.value)
   isTyping.value = true // 👈 Bắt đầu gõ
   // User message
   const renderedContentUser = await renderMarkdown(content);
@@ -197,7 +201,7 @@ const sendMessage = async () => {
     autoResize()
   })
   try {
-    const response = await axios.post(`${urlServer}/create-message`, formData, {
+    const response = await axios.post(`${urlServer}/create-message-gemeni`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -697,7 +701,7 @@ const stopVoice = () => {
               </template>
 
               <!-- Nút phát hoặc dừng âm thanh -->
-              <button v-if="!isPlaying" @click="handlePlay(message)" :disabled="isLoadingVoice" title="Phát âm thanh">
+              <!-- <button v-if="!isPlaying" @click="handlePlay(message)" :disabled="isLoadingVoice" title="Phát âm thanh">
                 <svg v-if="!isLoadingVoice" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                   viewBox="0 0 16 16">
                   <path fill="#000"
@@ -708,13 +712,13 @@ const stopVoice = () => {
                   viewBox="0 0 24 24">
                   <path fill="#000" d="M12 2v2a8 8 0 1 1-8 8H2a10 10 0 1 0 10-10z" />
                 </svg>
-              </button>
+              </button> -->
 
-              <button v-else @click="stopVoice" title="Dừng âm thanh">
+              <!-- <button v-else @click="stopVoice" title="Dừng âm thanh">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
                   <path fill="#000" d="M6 6h12v12H6z" />
                 </svg>
-              </button>
+              </button> -->
             </div>
           </div>
         </div>
@@ -759,6 +763,13 @@ const stopVoice = () => {
 
           <!-- Input + buttons -->
           <div class="flex w-full items-center">
+            <!-- Select Model -->
+            <div class="mr-2">
+              <select v-model="selectedModel" class="border border-gray-300 rounded px-2 py-1 text-sm text-black bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <option value="gemini-2.5-flash">Nhanh</option>
+                <option value="gemini-2.5-pro">Suy nghĩ</option>
+              </select>
+            </div>
             <!-- Input -->
             <textarea v-model="newMessage" @input="autoResize" @keydown="handleKeydown" @paste="handlePaste"
               @dblclick="handleDoubleClick" placeholder="please chat here..."
