@@ -661,9 +661,6 @@ const logout = () => {
                 class="card shadow bg-base-100 hover:shadow-lg transition-all duration-300">
                 <div class="card-body text-center px-3">
                   <h3 class="card-title block">{{ item.price }} {{ item.format }}</h3>
-                  <div class="my-3">
-                    <p class="text-lg font-semibold text-secondary">{{ item.credits }} credits</p>
-                  </div>
                   <ul class="text-left">
                     <li v-for="(feature, idx) in item.features" :key="idx" class="flex space-x-3">
                       <span>✔</span>
