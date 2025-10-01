@@ -103,6 +103,8 @@ const closeModelAddFile = () => {
 const closeModal = () => {
   botDetail.name = ''
   botDetail.templateMessage = ''
+  botDetail.description = ''
+  botDetail.priority = '0'
   botEdit.value = null
   imageFileDetail.value = null
   previewImageUrlDetail.value = ''
@@ -259,6 +261,7 @@ const getBot = (data: any) => {
   botDetail.templateMessage = botEdit.value?.templateMessage ?? ''
   previewImageUrlDetail.value = botEdit.value?.image ?? '' // Giả sử dữ liệu trả về có trường `image`
   botDetail.status = botEdit.value?.status?.toString() ?? '0'
+  botDetail.priority = botEdit.value?.priority ?? '0'
 }
 
 const getFileDetail = async (id: string) => {
@@ -316,6 +319,7 @@ const getBotDetail = async (id: string) => {
     botDetail.name = ''
     botDetail.templateMessage = ''
     botDetail.description = ''
+    botDetail.priority = '0'
     const modal: any = document.getElementById('modal_bot_detail')
     if (modal?.showModal) modal.showModal()
   }
@@ -344,6 +348,7 @@ const updateBotDetail = async () => {
       imageFileDetail.value = null
       previewImageUrlDetail.value = ''
       selectedFieldId.value = ''
+      botDetail.priority = '0'
       toast.success('Thêm mới thành công!', { position: 'top', duration: 3000 })
       const modal: any = document.getElementById('modal_bot_detail')
       if (modal?.close) modal.close()
@@ -368,6 +373,8 @@ const updateBotDetail = async () => {
       const modal: any = document.getElementById('modal_bot_detail')
       if (modal?.close) modal.close()
       await loadBots()
+      // Reset form state after update so next open is clean (unless editing again)
+      botDetail.priority = '0'
     } catch (error) {
       toast.error('Lỗi khi lưu dữ liệu!', { position: 'top', duration: 3000 })
       const modal: any = document.getElementById('modal_bot_detail')
