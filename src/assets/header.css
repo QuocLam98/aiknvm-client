@@ -68,7 +68,6 @@
 .header-logo a {
     display: flex;
     align-items: center;
-    color: black;
 }
 
 @media (max-width: 420px) {

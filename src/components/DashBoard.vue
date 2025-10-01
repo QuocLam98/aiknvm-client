@@ -139,10 +139,10 @@ const openModal3 = (checkoutUrl: string) => {
 
 
 const plans = [
-  { price: '50.000', format: 'vnđ', credits: 2, features: ['Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.', 'Viết bất kì nội dung nào theo ý muốn của bạn', 'Tạo ảnh đẹp theo yêu cầu (tốn phí hơn văn bản)', 'Dịch thuật văn bản theo nhu cầu', 'Tìm nguồn tài liệu chính xác', 'Đưa ra ý tưởng, kế hoạch, viết thơ, bài hát, truyện ngắn, kịch bản video, phim tập', 'Tư vấn bảo vệ sức khỏe, phòng chữa bệnh, sử dụng thuốc', 'Tư vấn tâm lí trong tình yêu và hôn nhân gia đình', 'Làm gia sư riêng cho ban', 'Hỗ trợ nghiên cứu khoa học', 'Tạo ảnh (khuyến nghị nên dùng gói 200k)'] },
-  { price: '100.000', format: 'vnđ', credits: 4, features: ['Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.', 'Viết bất kì nội dung nào theo ý muốn của bạn', 'Tạo ảnh đẹp theo yêu cầu (tốn phí hơn văn bản)', 'Dịch thuật văn bản theo nhu cầu', 'Tìm nguồn tài liệu chính xác', 'Đưa ra ý tưởng, kế hoạch, viết thơ, bài hát, truyện ngắn, kịch bản video, phim tập', 'Tư vấn bảo vệ sức khỏe, phòng chữa bệnh, sử dụng thuốc', 'Tư vấn tâm lí trong tình yêu và hôn nhân gia đình', 'Làm gia sư riêng cho ban', 'Hỗ trợ nghiên cứu khoa học', 'Tạo ảnh (khuyến nghị nên dùng gói 200k)'] },
-  { price: '150.000', format: 'vnđ', credits: 6, features: ['Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.', 'Viết bất kì nội dung nào theo ý muốn của bạn', 'Tạo ảnh đẹp theo yêu cầu (tốn phí hơn văn bản)', 'Dịch thuật văn bản theo nhu cầu', 'Tìm nguồn tài liệu chính xác', 'Đưa ra ý tưởng, kế hoạch, viết thơ, bài hát, truyện ngắn, kịch bản video, phim tập', 'Tư vấn bảo vệ sức khỏe, phòng chữa bệnh, sử dụng thuốc', 'Tư vấn tâm lí trong tình yêu và hôn nhân gia đình', 'Làm gia sư riêng cho ban', 'Hỗ trợ nghiên cứu khoa học', 'Tạo ảnh (khuyến nghị nên dùng gói 200k)'] },
-  { price: '200.000', format: 'vnđ', credits: 10, features: ['Trả lời mọi câu hỏi liên quan đến bất kì lĩnh vực nào từ giáo dục, khoa học, công nghệ, tâm lí, y học, đầu tư ... đến kiếm tiền.', 'Viết bất kì nội dung nào theo ý muốn của bạn', 'Tạo ảnh đẹp theo yêu cầu (tốn phí hơn văn bản)', 'Dịch thuật văn bản theo nhu cầu', 'Tìm nguồn tài liệu chính xác', 'Đưa ra ý tưởng, kế hoạch, viết thơ, bài hát, truyện ngắn, kịch bản video, phim tập', 'Tư vấn bảo vệ sức khỏe, phòng chữa bệnh, sử dụng thuốc', 'Tư vấn tâm lí trong tình yêu và hôn nhân gia đình', 'Làm gia sư riêng cho ban', 'Hỗ trợ nghiên cứu khoa học', 'Tạo ảnh (khuyến nghị nên dùng gói 200k)'] },
+  { price: '50.000', format: 'vnđ', credits: 2, features: ['Hỏi – đáp mọi lĩnh vực như giáo dục, tâm lí, pháp lí, bệnh lí, y học, khoa học, công nghệ, tin học, giới tính, tình yêu, hôn nhân, gia đình.', 'Có thể gõ được 30 câu hỏi với câu trả lời có độ chính xác cao.'] },
+  { price: '100.000', format: 'vnđ', credits: 4, features: ['Hỏi được tất cả các lĩnh vực như giáo dục, tâm lí, pháp lí, bệnh lí, y học, khoa học, công nghệ, tin học, giới tính, tình yêu, hôn nhân, gia đình, cách chữa bệnh, hướng dẫn dùng thuốc, viết thơ, viết bài diễn thuyết, bài phát biểu.', 'Có thể hỏi lên tới 100 câu hỏi hay yêu cầu với câu trả lời chuẩn và chất lượng cao, vượt xa các bản miễn phí.'] },
+  { price: '150.000', format: 'vnđ', credits: 6, features: ['Hỏi được tất cả các lĩnh vực như giáo dục, tâm lí, pháp lí, bệnh lí, y học, khoa học, công nghệ, tin học, giới tính, tình yêu, hôn nhân, gia đình, cách chữa bệnh, hướng dẫn dùng thuốc, viết thơ, viết bài diễn thuyết, bài phát biểu, kịch bản, viết sách, truyện, tạo tranh ảnh.', 'Có thể hỏi lên tới 150 câu hỏi hay yêu cầu với câu trả lời có độ tin cậy cao, hơn hẳn các bản miễn phí.'] },
+  { price: '200.000', format: 'vnđ', credits: 10, features: ['Hỏi được tất cả các lĩnh vực như giáo dục, tâm lí, pháp lí, bệnh lí, y học, khoa học, công nghệ, tin học, giới tính, tình yêu, hôn nhân, gia đình, cách chữa bệnh, hướng dẫn dùng thuốc, viết thơ, viết bài diễn thuyết, bài phát biểu, kịch bản, viết sách, truyện, nghiên cứu khoa học, tìm nguồn tài liệu chính xác, đưa ra ý tưởng, kế hoạch, viết thơ, bài hát, truyện ngắn, kịch bản video, phim tập, tạo nhiều tranh ảnh.', 'Có thể gõ được 200 câu hỏi hay yêu cầu dài với câu trả lời dài, chuẩn và chất lượng cao, vượt xa các bản miễn phí.'] },
 ]
 
 
@@ -179,6 +179,7 @@ onMounted(async () => {
     botSelect.value = bots.value
     eventBus.reloadBots = loadBots;
   } catch (error) {
+    localStorage.clear()
     router.push('/login')
   }
 
@@ -260,7 +261,7 @@ const logout = () => {
           </svg>
         </label>
         <div class="navbar-start">
-          <div class="flex items-center font-bold text-5xl text-black header-dashboard gap-2">
+          <div class="flex items-center font-bold text-5xl text-teal-500 header-dashboard gap-2">
             <img src="/src/assets/logo.png" alt=""> Aiknvm
           </div>
         </div>
@@ -661,7 +662,7 @@ const logout = () => {
                 class="card shadow bg-base-100 hover:shadow-lg transition-all duration-300">
                 <div class="card-body text-center px-3">
                   <h3 class="card-title block">{{ item.price }} {{ item.format }}</h3>
-                  <ul class="text-left">
+                  <ul class="text-left h-96">
                     <li v-for="(feature, idx) in item.features" :key="idx" class="flex space-x-3">
                       <span>✔</span>
                       <span>{{ feature }}</span>
@@ -725,49 +726,6 @@ const logout = () => {
         </div>
       </dialog>
     </Transition>
-
-    <!-- <Transition name="fade">
-      <dialog v-if="showModal4" id="my_modal_4" class="modal" open>
-        <div class="modal-box max-w-7xl xl:max-w-[95vw] w-full [&>button.absolute]:z-10 bg-base-200">
-          <button @click="closeModal4" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 close-btn"><svg
-              xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-                <path stroke-dasharray="64" stroke-dashoffset="64"
-                  d="M12 3c4.97 0 9 4.03 9 9c0 4.97 -4.03 9 -9 9c-4.97 0 -9 -4.03 -9 -9c0 -4.97 4.03 -9 9 -9Z">
-                  <animate fill="freeze" attributeName="stroke-dashoffset" dur="0.6s" values="64;0" />
-                </path>
-                <path stroke-dasharray="8" stroke-dashoffset="8" d="M12 12l4 4M12 12l-4 -4M12 12l-4 4M12 12l4 -4">
-                  <animate fill="freeze" attributeName="stroke-dashoffset" begin="0.6s" dur="0.2s" values="8;0" />
-                </path>
-              </g>
-            </svg>
-          </button>
-          <section class="">
-            <div class="px-3">
-              <div class="text-center my-5">
-                <h2 class="section-title">Chọn lĩnh vực bạn quan tâm</h2>
-              </div>
-              <div class="grid gap-5">
-                <div class="bg-white flex flex-col rounded w-full p-5 shadow-lg">
-                  <div class="font-bold mb-4">Danh sách lĩnh vực</div>
-                  <div class="grid grid-cols-1 sm:grid-cols-5 gap-3" id="listField">
-                    <label v-for="field in fields" :key="field._id" class="flex items-center gap-2">
-                      <input type="checkbox" class="accent-blue-600" :value="field._id" v-model="selectedFields" />
-                      <span>{{ field.name }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-          <div class="mt-4 flex justify-center">
-            <button class="px-4 py-2 bg-blue-600 text-white rounded" @click="handleSubmit">
-              Chọn lĩnh vực
-            </button>
-          </div>
-        </div>
-      </dialog>
-    </Transition> -->
   </div>
   <ZaloHelper />
 </template>

@@ -5,6 +5,7 @@ import { useToast } from 'vue-toast-notification';
 import rehypeHighlight from 'rehype-highlight'
 import { assert } from 'console';
 import { useRoute, useRouter } from 'vue-router'
+import { useVoice } from '@/composables/useVoice'
 
 interface Bot {
   _id: string,
@@ -31,9 +32,17 @@ interface ChatMessage {
 }
 const isUploading = ref(false)
 const router = useRouter()
-const isPlaying = ref(false)
-const isLoadingVoice = ref(false)
-let audio: HTMLAudioElement | null = null
+// Voice composable
+const {
+  isPlaying,
+  isLoadingVoice,
+  enableVoicePlayback,
+  toggleVoicePlayback,
+  isVoiceBot: isVoiceBotComposable,
+  getOrCreateVoice,
+  playVoice,
+  stopVoice
+} = useVoice()
 const isTyping = ref(false)
 const route = useRoute()
 const code = ref<string>('')
@@ -56,9 +65,8 @@ const isBotTyping = ref(false);  // Trạng thái đang trả lời
 const urlServer = import.meta.env.VITE_URL_SERVER
 // Chọn model (Nhanh = gemini-2.5-flash (mặc định), Suy nghĩ = gemini-2.5-pro)
 const selectedModel = ref<string>('gemini-2.5-flash')
-// ID bot English
-const botEnglishId = import.meta.env.VITE_BOT_ENGLISH
-const isEnglishBot = computed(() => getBotData.value?._id === botEnglishId)
+// Determine voice support
+const isVoiceBot = computed(() => isVoiceBotComposable(getBotData.value?._id))
 
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
@@ -572,73 +580,24 @@ const handleDoubleClick = (event: MouseEvent) => {
   textarea.select()
 }
 
-const stripHtml = (html: string): string => {
-  return html.replace(/<[^>]*>/g, '');
-}
+const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '')
 
-const handlePlay = async (message: ChatMessage) => {
-  if (!message.voice) {
-    isLoadingVoice.value = true
-    const text = stripHtml(message.content)
-    console.log(text)
-    try {
-      const voiceUrl = await axios.post(`${urlServer}/create-voice`, {
-        content: text,
-        id: message._id
-      })// Giả định hàm này trả về string
-      if (voiceUrl.data.status === 404) {
-        toast.error(voiceUrl.data.message, {
-          position: 'top',
-          duration: 8000
-        })
-      }
-      else {
-        const target = messages.value.find(e => e._id === message._id)
-        if (target) {
-          target.voice = voiceUrl.data.url
-        }
-        playVoice(voiceUrl.data.url)
-      }
-
-    } catch (err) {
-      toast.error('Lỗi khi tạo âm thanh', {
-        position: 'top',
-        duration: 8000
-      })
-    } finally {
-      isLoadingVoice.value = false
-    }
+async function handlePlay(message: ChatMessage) {
+  if (!enableVoicePlayback.value) {
+    toast.info('Voice đang tắt. Bật lại bằng công tắc.', { position: 'top', duration: 2500 })
+    return
   }
-
-  else {
-    playVoice(message.voice)
-  }
-}
-
-// Phát âm thanh
-const playVoice = (url: string) => {
-  stopVoice(); // dừng cái cũ nếu có
-  audio = new Audio(url);
-  audio.play().then(() => {
-    isPlaying.value = true;
-    audio?.addEventListener('ended', () => {
-      isPlaying.value = false
+  try {
+    const url = await getOrCreateVoice(message._id, stripHtml(message.content), async (plain, id) => {
+      const res = await axios.post(`${urlServer}/create-voice`, { content: plain, id })
+      if (res.data.status === 404) throw new Error(res.data.message || 'Voice not found')
+      return res.data.url
     })
-  }).catch(err => {
-    toast.error('Không thể phát âm thanh', {
-      position: 'top',
-      duration: 8000
-    })
-    isPlaying.value = false
-  })
-}
-
-// Dừng âm thanh
-const stopVoice = () => {
-  if (audio) {
-    audio.pause();
-    audio.currentTime = 0;
-    isPlaying.value = false
+    const target = messages.value.find(e => e._id === message._id)
+    if (target) target.voice = url
+    playVoice(url)
+  } catch (e: any) {
+    toast.error(e.message || 'Lỗi khi tạo âm thanh', { position: 'top', duration: 5000 })
   }
 }
 </script>
@@ -789,11 +748,18 @@ const stopVoice = () => {
                 </button>
               </template>
 
-              <!-- Nút phát/dừng âm thanh chỉ hiển thị với bot English -->
-              <template v-if="isEnglishBot">
+              <!-- Voice controls -->
+              <template v-if="isVoiceBot">
+                <button
+                  class="mr-1 text-xs px-2 py-1 rounded border"
+                  @click="toggleVoicePlayback"
+                  :title="enableVoicePlayback ? 'Tắt voice' : 'Bật voice'"
+                >
+                  {{ enableVoicePlayback ? 'Voice ON' : 'Voice OFF' }}
+                </button>
                 <button v-if="!isPlaying" @click="handlePlay(message)" :disabled="isLoadingVoice" title="Phát âm thanh">
                   <svg v-if="!isLoadingVoice" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16">
-                    <path fill="#000" d="M9 2.5a.5.5 0 0 0-.849-.358l-2.927 2.85H3.5a1.5 1.5 0 0 0-1.5 1.5v2.99a1.5 1.5 0 0 0 1.5 1.5h1.723l2.927 2.875A.5.5 0 0 0 9 13.5zm1.111 2.689a.5.5 0 0 1 .703-.08l.002.001l.002.002l.005.004l.015.013l.046.04q.055.05.142.142c.113.123.26.302.405.54c.291.48.573 1.193.573 2.148c0 .954-.282 1.668-.573 2.148a3.4 3.4 0 0 1-.405.541a3 3 0 0 1-.202.196l-.008.007h-.001s-.447.243-.703-.078a.5.5 0 0 1 .075-.7l.002-.002l-.001.001l.002-.001h-.001l.018-.016q.028-.025.085-.085a2.4 2.4 0 0 0 .284-.382c.21-.345.428-.882.428-1.63s-.218-1.283-.428-1.627a2.4 2.4 0 0 0-.368-.465l-.018-.016a.5.5 0 0 1-.079-.701m1.702-2.08a.5.5 0 1 0-.623.782l.011.01l.052.045q.072.063.201.195c.17.177.4.443.63.794c.46.701.92 1.733.92 3.069a5.5 5.5 0 0 1-.92 3.065c-.23.35-.46.614-.63.79a4 4 0 0 1-.252.24l-.011.01h-.001a.5.5 0 0 0 .623.782l.033-.027l.075-.065c.063-.057.15-.138.253-.245a6.4 6.4 0 0 0 .746-.936a6.5 6.5 0 0 0 1.083-3.614a6.54 6.54 0 0 0-1.083-3.618a6.5 6.5 0 0 0-.745-.938a5 5 0 0 0-.328-.311l-.023-.019l-.007-.006l-.002-.002zM10.19 5.89l-.002-.001Z" />
+                    <path fill="#000" d="M9 2.5a.5.5 0 0 0-.849-.358l-2.927 2.85H3.5a1.5 1.5 0 0 0-1.5 1.5v2.99a.5.5 0 0 0 1.5 1.5h1.723l2.927 2.875A.5.5 0 0 0 9 13.5zm1.111 2.689a.5.5 0 0 1 .703-.08l.002.001l.002.002l.005.004l.015.013l.046.04q.055.05.142.142c.113.123.26.302.405.54c.291.48.573 1.193.573 2.148c0 .954-.282 1.668-.573 2.148a3.4 3.4 0 0 1-.405.541a3 3 3 0 0 1-.202.196l-.008.007h-.001s-.447.243-.703-.078a.5.5 0 0 1 .075-.7l.002-.002l-.001.001l.002-.001h-.001l.018-.016q.028-.025.085-.085a2.4 2.4 0 0 0 .284-.382c.21-.345.428-.882.428-1.63s-.218-1.283-.428-1.627a2.4 2.4 0 0 0-.368-.465l-.018-.016a.5.5 0 0 1-.079-.701m1.702-2.08a.5.5 0 1 0-.623.782l.011.01l.052.045q.072.063.201.195c.17.177.4.443.63.794c.46.701.92 1.733.92 3.069a5.5 5.5 0 0 1-.92 3.065c-.23.35-.46.614-.63.79a4 4 0 0 1-.252.24l-.011.01h-.001a.5.5 0 0 0 .623.782l.033-.027l.075-.065c.063-.057.15-.138.253-.245a6.4 6.4 0 0 0 .746-.936a6.5 6.5 0 0 0 1.083-3.614a6.54 6.54 0 0 0-1.083-3.618a6.5 6.5 0 0 0-.745-.938a5 5 0 0 0-.328-.311l-.023-.019l-.007-.006l-.002-.002zM10.19 5.89l-.002-.001Z" />
                   </svg>
                   <svg v-else class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
                     <path fill="#000" d="M12 2v2a8 8 0 1 1-8 8H2a10 10 0 1 0 10-10z" />
@@ -859,7 +825,7 @@ const stopVoice = () => {
             </div>
             <!-- Input -->
             <textarea v-model="newMessage" @input="autoResize" @keydown="handleKeydown" @paste="handlePaste" @dblclick="handleDoubleClick"
-              placeholder="please chat here..."
+              placeholder="Xin mời nhập câu hỏi..."
               class="input-chat w-full border-none focus-within:ring-0 px-0 focus-visible:outline-none resize-none overflow-hidden"
               rows="1" ref="textareaRef"
               style="line-height: 1.5rem; max-height: calc(1.5rem * 10); overflow-y: auto;"></textarea>

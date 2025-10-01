@@ -772,7 +772,7 @@ const stopVoice = () => {
             </div>
             <!-- Input -->
             <textarea v-model="newMessage" @input="autoResize" @keydown="handleKeydown" @paste="handlePaste"
-              @dblclick="handleDoubleClick" placeholder="please chat here..."
+              @dblclick="handleDoubleClick" placeholder="Xin mời nhập câu hỏi..."
               class="input-chat w-full border-none focus-within:ring-0 px-0 focus-visible:outline-none resize-none overflow-hidden"
               rows="1" ref="textareaRef"
               style="line-height: 1.5rem; max-height: calc(1.5rem * 10); overflow-y: auto;"></textarea>

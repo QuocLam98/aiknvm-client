@@ -128,6 +128,7 @@ onMounted(async () => {
     router.push('/dashboard')
 
   } catch (error) {
+    localStorage.clear()
     router.push('/login')
   }
 })

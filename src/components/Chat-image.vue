@@ -406,7 +406,7 @@ const handleDoubleClick = (event: MouseEvent) => {
           <div class="flex w-full items-center">
             <!-- Input -->
             <textarea v-model="newMessage" @input="autoResize" @keydown.enter="sendMessage" @paste="handlePaste"
-              placeholder="please chat here..."
+              placeholder="Xin mời nhập câu hỏi..."
               class="input-chat w-full border-none focus-within:ring-0 px-0 focus-visible:outline-none resize-none overflow-hidden"
               maxlength="1000" rows="1" ref="textareaRef"
               style="line-height: 1.5rem; max-height: calc(1.5rem * 10); overflow-y: auto;"></textarea>
