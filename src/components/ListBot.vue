@@ -15,7 +15,8 @@ interface Bot {
   templateMessage: string
   image: string
   description: string,
-  status?: number
+  status?: number,
+  priority?: string
 }
 
 interface SelectedFile extends File {
@@ -38,7 +39,8 @@ const botDetail = reactive({
   templateMessage: '',
   description: '',
   image: '',
-  status: '0'
+  status: '0',
+  priority: '0'
 })
 const titleModal = ref('')
 const toast = useToast()
@@ -551,6 +553,11 @@ const changePerPage = () => {
             </select>
           </div>
 
+                    <div>
+            <label class="label">Ưu tiên</label>
+            <input type="text" class="input input-bordered w-full" v-model="botDetail.priority" />
+          </div>
+
           <div>
             <label class="label">Mô tả</label>
             <textarea class="textarea textarea-bordered w-full" v-model="botDetail.description"
@@ -562,6 +569,7 @@ const changePerPage = () => {
             <label class="label">Cấu hình câu trả lời</label>
             <textarea class="textarea textarea-bordered w-full" v-model="botDetail.templateMessage" rows="15"></textarea>
           </div>
+        
 
           <!-- Nút lưu -->
           <div class="flex justify-end gap-2 mt-4 md:col-span-2">
