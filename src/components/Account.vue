@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import axios from 'axios';
 import { ref, watch, onMounted } from 'vue';
-import avatarImage from '../assets/avatar-default.png';
 import { useToast } from 'vue-toast-notification';
 
 interface User {
@@ -10,7 +9,7 @@ interface User {
     image?: string
 }
 
-const avatar = avatarImage
+const avatar = 'https://aiknvm.hn.ss.bfcplatform.vn/aiknvm/Asset/avatar-default.png'
 const urlServer = import.meta.env.VITE_URL_SERVER
 const user = ref<User | null>(null)
 const toast = useToast()

@@ -6,7 +6,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'unsafe-none',
@@ -15,7 +15,8 @@ export default defineConfig({
   },
   plugins: [
     vue(),
-    vueDevTools(),
+    // Only enable Vue DevTools in development to avoid heavy injections in prod builds
+    ...(mode === 'development' ? [vueDevTools()] : []),
     tailwindcss(),
   ],
   resolve: {
@@ -23,4 +24,27 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
-})
+  build: {
+    // Avoid extra CPU time calculating gzip/brotli sizes in CI/build servers
+    reportCompressedSize: false,
+    chunkSizeWarningLimit: 2000,
+    // Help Rollup split large libs (markdown/highlight stack) into separate chunks
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (
+              id.includes('unified') ||
+              id.includes('remark') ||
+              id.includes('rehype') ||
+              id.includes('highlight.js')
+            ) {
+              return 'md-stack'
+            }
+            return 'vendor'
+          }
+        }
+      }
+    }
+  }
+}))

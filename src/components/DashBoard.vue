@@ -280,7 +280,7 @@ const logout = () => {
         </label>
         <div class="navbar-start">
           <div class="flex items-center font-bold text-5xl text-teal-600 header-dashboard gap-2">
-            <img src="/src/assets/logo.png" alt=""> Aiknvm
+            <img src="https://aiknvm.hn.ss.bfcplatform.vn/aiknvm/Asset/logo.png" alt=""> Aiknvm
           </div>
         </div>
         <div class="navbar-end flex gap-4">

@@ -1,5 +1,5 @@
 .about {
-    background-image: url('/src/assets/download.svg');
+    background-image: url('https://aiknvm.hn.ss.bfcplatform.vn/aiknvm/Asset/download.svg');
     background-repeat: no-repeat;
     background-size: calc(100% + 2px) calc(100% + 2px);
     background-repeat: no-repeat;
@@ -18,7 +18,7 @@
  font-size: 20px;
 }
 .bg-benefit {
-    background-image: url('./benefit.svg');
+    background-image: url('https://aiknvm.hn.ss.bfcplatform.vn/aiknvm/Asset/benefit.svg');
     background-repeat: repeat;
     background-color: #f4f4f4;
     bottom: 0;
@@ -105,7 +105,7 @@
     position: relative;
 }
 .price-bg {
-    background-image: url('./bg-price.svg');
+    background-image: url('https://aiknvm.hn.ss.bfcplatform.vn/aiknvm/Asset/bg-price.svg');
     background-repeat: repeat;
     background-color: #fff !important;
     bottom: 0;

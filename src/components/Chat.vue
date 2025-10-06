@@ -53,6 +53,8 @@ const historyChat = ref('')
 // Chọn model (nhanh = gemini-2.5-flash (mặc định), Suy nghĩ = gemini-2.5-pro)
 const selectedModel = ref<string>('gemini-2.5-flash')
 
+let hlLanguagesCache: Record<string, any> | null = null
+
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
   const remarkParse = (await import('remark-parse')).default
@@ -60,10 +62,25 @@ const renderMarkdown = async (markdown: string) => {
   const remarkRehype = (await import('remark-rehype')).default
   const rehypeHighlight = (await import('rehype-highlight')).default
 
+  if (!hlLanguagesCache) {
+    const [javascript, typescript, json, xml, css, bash, markdown, yaml, python] = await Promise.all([
+      import('highlight.js/lib/languages/javascript').then(m => m.default),
+      import('highlight.js/lib/languages/typescript').then(m => m.default),
+      import('highlight.js/lib/languages/json').then(m => m.default),
+      import('highlight.js/lib/languages/xml').then(m => m.default),
+      import('highlight.js/lib/languages/css').then(m => m.default),
+      import('highlight.js/lib/languages/bash').then(m => m.default),
+      import('highlight.js/lib/languages/markdown').then(m => m.default),
+      import('highlight.js/lib/languages/yaml').then(m => m.default),
+      import('highlight.js/lib/languages/python').then(m => m.default),
+    ])
+    hlLanguagesCache = { javascript, typescript, json, xml, html: xml, css, bash, md: markdown, markdown, yaml, python }
+  }
+
   const file = await unified()
     .use(remarkParse)
     .use(remarkRehype)
-    .use(rehypeHighlight)
+    .use(rehypeHighlight, { languages: hlLanguagesCache as any })
     .use(rehypeStringify)
     .process(markdown)
 

@@ -67,7 +67,7 @@ const resetPassword = async () => {
 
 <template>
   <div class="w-100 h-screen login">
-    <h1 class="flex items-center"><img src="/src/assets/logo.png" alt="" class="w-24"> Aiknvm</h1>
+    <h1 class="flex items-center"><img src="https://aiknvm.hn.ss.bfcplatform.vn/aiknvm/Asset/logo.png" alt="" class="w-24"> Aiknvm</h1>
     <div class="login-form">
       <div class="login-title">Đặt lại mật khẩu</div>
 

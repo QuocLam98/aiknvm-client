@@ -15,7 +15,7 @@
       rel="noopener"
       class="zalo-fixed-icon"
     >
-      <img src="../assets/Icon_of_Zalo.svg.webp " alt="Zalo Icon" />
+      <img src="https://aiknvm.hn.ss.bfcplatform.vn/aiknvm/Asset/Icon_of_Zalo.svg.webp" alt="Zalo Icon" />
     </a>
   </div>
 </template>
