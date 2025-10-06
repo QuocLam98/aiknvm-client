@@ -15,12 +15,8 @@ import ZaloHelper from './ZaloHelper.vue';
 interface User {
   email: string,
   image?: string,
-  name: string
-}
-
-interface Field {
-  _id: string,
-  name: string
+  name: string,
+  phone?: string,
 }
 
 interface Bot {
@@ -69,6 +65,26 @@ const getUser = async (token: string) => {
     user.value = response.data
   }
 
+}
+
+// Nhắc người dùng cập nhật số điện thoại nếu thiếu và điều hướng sang trang hồ sơ
+const promptUpdatePhoneIfNeeded = () => {
+  try {
+    const alreadyPrompted = sessionStorage.getItem('phonePromptShown') === '1'
+    const phone = user.value?.phone?.trim() || ''
+    if (!alreadyPrompted && phone === '') {
+      sessionStorage.setItem('phonePromptShown', '1')
+      if (router.currentRoute.value.path !== '/dashboard/profile') {
+        router.push('/dashboard/profile')
+      }
+      toast.warning('Hãy cập nhật số điện thoại của bạn', {
+        position: 'top',
+        duration: 6000,
+      })
+    }
+  } catch (e) {
+    // ignore toast/route issues
+  }
 }
 
 const goToPayment = async (item: any) => {
@@ -175,6 +191,8 @@ onMounted(async () => {
     await loadBots()
     await loadHistoryChat()
     await getUser(token)
+    // Sau khi lấy thông tin user, kiểm tra số điện thoại
+    promptUpdatePhoneIfNeeded()
     // getListField()
     botSelect.value = bots.value
     eventBus.reloadBots = loadBots;
