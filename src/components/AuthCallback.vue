@@ -32,7 +32,7 @@ onMounted(async () => {
     localStorage.setItem('email', data.email)
     router.push('/dashboard')
   } catch (err: any) {
-    toast.error('Không thể kết nối máy chủ. Vui lòng thử lại.', { position: 'top', duration: 4000 })
+    toast.error('Máy chủ đang bảo trì, vui lòng thử lại sau. Xin lỗi quý khách vì sự bất tiện này.', { position: 'top', duration: 4000 })
     router.push('/login')
   } finally {
     isProcessing.value = false
