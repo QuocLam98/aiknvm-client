@@ -2,7 +2,6 @@
 import { ref, onMounted, nextTick, computed } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toast-notification';
-import rehypeHighlight from 'rehype-highlight'
 import { useRouter } from 'vue-router';
 import { useHistoryChat } from '@/composables/useHistoryChat'
 
@@ -59,6 +58,7 @@ const renderMarkdown = async (markdown: string) => {
   const remarkParse = (await import('remark-parse')).default
   const rehypeStringify = (await import('rehype-stringify')).default
   const remarkRehype = (await import('remark-rehype')).default
+  const rehypeHighlight = (await import('rehype-highlight')).default
 
   const file = await unified()
     .use(remarkParse)
