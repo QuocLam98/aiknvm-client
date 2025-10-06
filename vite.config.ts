@@ -28,23 +28,6 @@ export default defineConfig(({ mode }) => ({
     // Avoid extra CPU time calculating gzip/brotli sizes in CI/build servers
     reportCompressedSize: false,
     chunkSizeWarningLimit: 2000,
-    // Help Rollup split large libs (markdown/highlight stack) into separate chunks
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (
-              id.includes('unified') ||
-              id.includes('remark') ||
-              id.includes('rehype') ||
-              id.includes('highlight.js')
-            ) {
-              return 'md-stack'
-            }
-            return 'vendor'
-          }
-        }
-      }
-    }
+    // Let Vite/Rollup decide chunking to avoid potential init order issues
   }
 }))
