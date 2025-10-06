@@ -574,7 +574,7 @@ const changePerPage = () => {
           </div>
 
           <!-- Mẫu tin nhắn -->
-          <div>
+          <div class="col-12">
             <label class="label">Cấu hình câu trả lời</label>
             <textarea class="textarea textarea-bordered w-full" v-model="botDetail.templateMessage" rows="15"></textarea>
           </div>
