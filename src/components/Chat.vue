@@ -492,7 +492,6 @@ const handlePlay = async (message: ChatMessage) => {
   if (!message.voice) {
     isLoadingVoice.value = true
     const text = stripHtml(message.content)
-    console.log(text)
     try {
       const voiceUrl = await axios.post(`${urlServer}/create-voice`, {
         content: text,

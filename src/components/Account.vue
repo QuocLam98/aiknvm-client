@@ -42,7 +42,6 @@ onMounted(async () => {
 })
 
 const updateUserAcount = async () => {
-    console.log(phone.value)
     if (phone.value === '') {
         toast.error('Nhập số điện thoại', {
             position: 'top',

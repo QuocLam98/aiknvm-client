@@ -260,7 +260,6 @@ const isPdfFile = (type: string | undefined): boolean => {
 }
 
 const isDocFile = (type: string | undefined): boolean => {
-	console.log(type)
   // Kiểm tra nếu type là chuỗi và thuộc một trong các loại file Word
   return type ? ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(type) : false;
 }

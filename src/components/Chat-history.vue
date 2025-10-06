@@ -213,7 +213,6 @@ const sendMessage = async () => {
     const response = await axios.post(`${urlServer}/create-message-gemeni`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-    console.log(response)
     if (response.data.status === 400)
     {
       router.push('/login')

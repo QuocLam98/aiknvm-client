@@ -20,5 +20,4 @@ app.use(router)
 app.use(pinia)
 app.use(head)
 
-console.log('Client success')
 app.mount('#app')
