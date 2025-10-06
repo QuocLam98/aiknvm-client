@@ -279,7 +279,7 @@ const logout = () => {
           </svg>
         </label>
         <div class="navbar-start">
-          <div class="flex items-center font-bold text-5xl text-teal-500 header-dashboard gap-2">
+          <div class="flex items-center font-bold text-5xl text-teal-600 header-dashboard gap-2">
             <img src="/src/assets/logo.png" alt=""> Aiknvm
           </div>
         </div>

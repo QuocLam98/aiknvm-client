@@ -29,7 +29,7 @@ onMounted(() => {
         <div class="container-flur">
             <div class="header-home">
                 <div class="header-logo">
-                    <a href="/" class="text-5xl text-teal-500 font-bold "><img src="/src/assets/logo.png" alt=""> Aiknvm</a>
+                    <a href="/" class="text-5xl text-teal-600 font-bold "><img src="/src/assets/logo.png" alt=""> Aiknvm</a>
                 </div>
                 <div class="header-button">
                     <ul class="lg-li hidden lg:flex">

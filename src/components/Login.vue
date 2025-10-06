@@ -136,7 +136,7 @@ onMounted(async () => {
 
 <template>
   <div class="w-100 h-screen login">
-    <h1 class="flex items-center text-teal-500"><img src="/src/assets/logo.png" alt="" class="w-18"> Aiknvm</h1>
+    <h1 class="flex items-center text-teal-600"><img src="/src/assets/logo.png" alt="" class="w-18"> Aiknvm</h1>
     <div class="login-form">
       <div class="login-title">Đăng nhập</div>
       <div class="join w-full overflow-hidden" @click="googleLogin()"><button
