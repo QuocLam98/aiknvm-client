@@ -20,6 +20,7 @@
     "@vueuse/head": "^2.0.0",
     "axios": "^1.8.1",
     "bun-plugin-tailwind": "^0.0.15",
+    "howler": "^2.2.4",
     "highlight.js": "^11.11.1",
     "lodash.debounce": "^4.0.8",
     "nanoid": "^5.1.5",
@@ -46,6 +47,7 @@
   "devDependencies": {
     "@tsconfig/node22": "^22.0.0",
     "@types/node": "^22.13.4",
+    "@types/howler": "^2.2.11",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/tsconfig": "^0.7.0",
     "daisyui": "^5.0.27",

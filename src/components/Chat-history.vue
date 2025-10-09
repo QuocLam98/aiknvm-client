@@ -35,6 +35,7 @@ const {
   isPlaying,
   isLoadingVoice,
   isVoiceBot: isVoiceBotComposable,
+  primePlayback,
   getOrCreateVoice,
   playVoice,
   stopVoice
@@ -409,7 +410,8 @@ const fetchMessages = async (isLoadMore = false) => {
           status: msg.status,
           _id: msg._id,
           isCopied: false,
-          isDone: true
+          isDone: true,
+          voice: msg.voice
         });
       }
     }
@@ -581,16 +583,38 @@ const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '')
 
 async function handlePlay(message: ChatMessage) {
   try {
+    // Nếu đã có voice URL, chuyển sang phát ngay và bỏ qua tạo mới
+    if (message.voice) {
+      await playExistingVoice(message)
+      return
+    }
+    await primePlayback()
     const url = await getOrCreateVoice(message._id, stripHtml(message.content), async (plain, id) => {
-      const res = await axios.post(`${urlServer}/create-voice`, { content: plain, id })
+      const res = await axios.post(`${urlServer}/create-voice-gemini`, { content: plain, id })
       if (res.data.status === 404) throw new Error(res.data.message || 'Voice not found')
       return res.data.url
     })
     const target = messages.value.find(e => e._id === message._id)
     if (target) target.voice = url
-    playVoice(url)
+    const ok = await playVoice(url)
+    if (!ok) {
+      toast.error('Không phát được âm thanh. Kiểm tra quyền autoplay, CORS hoặc thử lại.', { position: 'top', duration: 5000 })
+    }
   } catch (e: any) {
     toast.error(e.message || 'Lỗi khi tạo âm thanh', { position: 'top', duration: 5000 })
+  }
+}
+
+async function playExistingVoice(message: ChatMessage) {
+  if (!message.voice) return
+  try {
+    await primePlayback()
+    const ok = await playVoice(message.voice)
+    if (!ok) {
+      toast.error('Không phát được âm thanh', { position: 'top', duration: 4000 })
+    }
+  } catch (e: any) {
+    toast.error(e.message || 'Lỗi khi phát âm thanh', { position: 'top', duration: 4000 })
   }
 }
 </script>
@@ -741,21 +765,39 @@ async function handlePlay(message: ChatMessage) {
                 </button>
               </template>
 
-              <!-- Voice controls -->
+              <!-- Voice controls (support multiple bots + user toggle) -->
               <template v-if="isVoiceBot">
-                <button v-if="!isPlaying" @click="handlePlay(message)" :disabled="isLoadingVoice" title="Phát âm thanh">
-                  <svg v-if="!isLoadingVoice" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16">
-                    <path fill="#000" d="M9 2.5a.5.5 0 0 0-.849-.358l-2.927 2.85H3.5a1.5 1.5 0 0 0-1.5 1.5v2.99a.5.5 0 0 0 1.5 1.5h1.723l2.927 2.875A.5.5 0 0 0 9 13.5zm1.111 2.689a.5.5 0 0 1 .703-.08l.002.001l.002.002l.005.004l.015.013l.046.04q.055.05.142.142c.113.123.26.302.405.54c.291.48.573 1.193.573 2.148c0 .954-.282 1.668-.573 2.148a3.4 3.4 0 0 1-.405.541a3 3 3 0 0 1-.202.196l-.008.007h-.001s-.447.243-.703-.078a.5.5 0 0 1 .075-.7l.002-.002l-.001.001l.002-.001h-.001l.018-.016q.028-.025.085-.085a2.4 2.4 0 0 0 .284-.382c.21-.345.428-.882.428-1.63s-.218-1.283-.428-1.627a2.4 2.4 0 0 0-.368-.465l-.018-.016a.5.5 0 0 1-.079-.701m1.702-2.08a.5.5 0 1 0-.623.782l.011.01l.052.045q.072.063.201.195c.17.177.4.443.63.794c.46.701.92 1.733.92 3.069a5.5 5.5 0 0 1-.92 3.065c-.23.35-.46.614-.63.79a4 4 0 0 1-.252.24l-.011.01h-.001a.5.5 0 0 0 .623.782l.033-.027l.075-.065c.063-.057.15-.138.253-.245a6.4 6.4 0 0 0 .746-.936a6.5 6.5 0 0 0 1.083-3.614a6.54 6.54 0 0 0-1.083-3.618a6.5 6.5 0 0 0-.745-.938a5 5 0 0 0-.328-.311l-.023-.019l-.007-.006l-.002-.002zM10.19 5.89l-.002-.001Z" />
-                  </svg>
-                  <svg v-else class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                    <path fill="#000" d="M12 2v2a8 8 0 1 1-8 8H2a10 10 0 1 0 10-10z" />
-                  </svg>
-                </button>
-                <button v-else @click="stopVoice" title="Dừng âm thanh">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                    <path fill="#000" d="M6 6h12v12H6z" />
-                  </svg>
-                </button>
+                <!-- Nếu chưa có voice URL: hiện nút tạo/phát -->
+                <template v-if="!message.voice">
+                  <button v-if="!isPlaying" @click="handlePlay(message)" :disabled="isLoadingVoice" title="Phát âm thanh">
+                    <svg v-if="!isLoadingVoice" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16">
+                      <path fill="#000" d="M9 2.5a.5.5 0 0 0-.849-.358l-2.927 2.85H3.5a1.5 1.5 0 0 0-1.5 1.5v2.99a1.5 1.5 0 0 0 1.5 1.5h1.723l2.927 2.875A.5.5 0 0 0 9 13.5zm1.111 2.689a.5.5 0 0 1 .703-.08l.002.001l.002.002l.005.004l.015.013l.046.04q.055.05.142.142c.113.123.26.302.405.54c.291.48.573 1.193.573 2.148c0 .954-.282 1.668-.573 2.148a3.4 3.4 0 0 1-.405.541a3 3 3 0 0 1-.202.196l-.008.007h-.001s-.447.243-.703-.078a.5.5 0 0 1 .075-.7l.002-.002l-.001.001l.002-.001h-.001l.018-.016q.028-.025.085-.085a2.4 2.4 0 0 0 .284-.382c.21-.345.428-.882.428-1.63s-.218-1.283-.428-1.627a2.4 2.4 0 0 0-.368-.465l-.018-.016a.5.5 0 0 1-.079-.701m1.702-2.08a.5.5 0 1 0-.623.782l.011.01l.052.045q.072.063.201.195c.17.177.4.443.63.794c.46.701.92 1.733.92 3.069a5.5 5.5 0 0 1-.92 3.065c-.23.35-.46.614-.63.79a4 4 0 0 1-.252.24l-.011.01h-.001a.5.5 0 0 0 .623.782l.033-.027l.075-.065c.063-.057.15-.138.253-.245a6.4 6.4 0 0 0 .746-.936a6.5 6.5 0 0 0 1.083-3.614a6.54 6.54 0 0 0-1.083-3.618a6.5 6.5 0 0 0-.745-.938a5 5 0 0 0-.328-.311l-.023-.019l-.007-.006l-.002-.002zM10.19 5.89l-.002-.001Z" />
+                    </svg>
+                    <svg v-else class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                      <path fill="#000" d="M12 2v2a8 8 0 1 1-8 8H2a10 10 0 1 0 10-10z" />
+                    </svg>
+                  </button>
+                  <button v-else @click="stopVoice" title="Dừng âm thanh">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                      <path fill="#000" d="M6 6h12v12H6z" />
+                    </svg>
+                  </button>
+                  
+                </template>
+                <!-- Nếu đã có voice URL: phát trực tiếp trong trình duyệt và có thể dừng nếu đang phát -->
+                <template v-else>
+                  <button v-if="!isPlaying" class="btn btn-ghost" @click="playExistingVoice(message)" title="Phát âm thanh">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+                      <path fill="#000" d="M8 5v14l11-7z" />
+                    </svg>
+                  </button>
+                  <button v-if="isPlaying" @click="stopVoice" title="Dừng âm thanh">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                      <path fill="#000" d="M6 6h12v12H6z" />
+                    </svg>
+                  </button>
+                  
+                </template>
               </template>
             </div>
           </div>
