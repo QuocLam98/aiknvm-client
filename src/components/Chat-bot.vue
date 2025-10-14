@@ -63,6 +63,7 @@ const botIdSelect = ref('')
 const selectedModel = ref<string>('gemini-2.5-flash')
 // Determine if current bot supports voice via composable
 const isVoiceBot = computed(() => isVoiceBotComposable(getBotData.value?._id))
+const api = ref('')
 
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
@@ -220,7 +221,12 @@ const sendMessage = async () => {
   })
 
   try {
-    const response = await axios.post(`${urlServer}/create-message-gemeni`, formData, {
+    if (selectedModel.value === 'gpt-5' || selectedModel.value === 'gpt-5-mini') {
+      api.value = `${urlServer}/create-message`
+    } else {
+      api.value = `${urlServer}/create-message-gemini`
+    }
+    const response = await axios.post(api.value, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -791,8 +797,10 @@ async function playExistingVoice(message: ChatMessage) {
             <!-- Select Model -->
             <div class="mr-2">
               <select v-model="selectedModel" class="border border-gray-300 rounded px-2 py-1 text-sm text-black bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                <option value="gemini-2.5-flash">Nhanh</option>
-                <option value="gemini-2.5-pro">Suy nghĩ</option>
+                <option value="gemini-2.5-pro">Gemini Pro</option>
+                <option value="gemini-2.5-flash">Gemini Flash</option>
+                <option value="gpt-5">GPT-5</option>
+                <option value="gpt-5-mini">GPT-5 mini</option>
               </select>
             </div>
             <!-- Input -->
