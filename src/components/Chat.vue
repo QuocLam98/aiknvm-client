@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick, computed, watch } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toast-notification';
 import { useRouter } from 'vue-router';
@@ -12,6 +12,7 @@ interface Bot {
   template: string,
   image?: string,
   status: number
+  models: string
 }
 
 interface ChatMessage {
@@ -53,6 +54,41 @@ const historyChat = ref('')
 // Chọn model (nhanh = gemini-2.5-flash (mặc định), Suy nghĩ = gemini-2.5-pro)
 const selectedModel = ref<string>('gemini-2.5-flash')
 const api = ref('')
+
+const GEMINI_MODELS = [
+  { value: 'gemini-2.5-flash', label: 'Gemini Flash' },
+  { value: 'gemini-2.5-pro', label: 'Gemini Pro' },
+]
+
+const GPT_MODELS = [
+  { value: 'gpt-5', label: 'GPT-5' },
+  { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+]
+
+const availableModels = computed(() => {
+  const type = getBotData.value?.models
+  switch (type) {
+    case '1':
+      return GEMINI_MODELS
+    case '2':
+      return GPT_MODELS
+    case '3':
+      return [...GEMINI_MODELS, ...GPT_MODELS]
+    default:
+      return GEMINI_MODELS
+  }
+})
+
+watch(availableModels, (options) => {
+  if (!options.length) {
+    selectedModel.value = ''
+    return
+  }
+  const currentExists = options.some(option => option.value === selectedModel.value)
+  if (!currentExists) {
+    selectedModel.value = options[0].value
+  }
+}, { immediate: true })
 
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
@@ -773,10 +809,9 @@ const stopVoice = () => {
             <!-- Select Model -->
             <div class="mr-2">
               <select v-model="selectedModel" class="border border-gray-300 rounded px-2 py-1 text-sm text-black bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                <option value="gemini-2.5-pro">Gemini Pro</option>
-                <option value="gemini-2.5-flash">Gemini Flash</option>
-                <option value="gpt-5">GPT-5</option>
-                <option value="gpt-5-mini">GPT-5 mini</option>
+                <option v-for="option in availableModels" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
               </select> 
             </div>
             <!-- Input -->

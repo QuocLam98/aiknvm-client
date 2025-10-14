@@ -16,7 +16,8 @@ interface Bot {
   image: string
   description: string,
   status?: number,
-  priority?: string
+  priority?: string,
+  models: string
 }
 
 interface SelectedFile extends File {
@@ -40,7 +41,8 @@ const botDetail = reactive({
   description: '',
   image: '',
   status: '0',
-  priority: '0'
+  priority: '0',
+  models: '1'
 })
 const titleModal = ref('')
 const toast = useToast()
@@ -342,6 +344,7 @@ const updateBotDetail = async () => {
       formData.append('description', botDetail.description || '')
       formData.append('status', botDetail.status)
       formData.append('priority', botDetail.priority || '0')
+      formData.append('models', botDetail.models || '1')
      if(imageFileDetail.value) formData.append('image', imageFileDetail.value)
       const response = await axios.post(`${urlServer}/registerBot`,formData)
       bots.value.unshift(response.data)
@@ -365,6 +368,7 @@ const updateBotDetail = async () => {
       formData.append('description', botDetail.description || '')
       formData.append('status', botDetail.status)
       formData.append('priority', botDetail.priority || '0')
+      formData.append('models', botDetail.models || '1')
       if(imageFileDetail.value) formData.append('image', imageFileDetail.value)
       const response = await axios.put(`${urlServer}/update-bot/${botEdit.value._id}`, formData)
       const findIndex = bots.value.findIndex(x => x._id === response.data._id)
@@ -562,9 +566,21 @@ const changePerPage = () => {
             </select>
           </div>
 
-                    <div>
+          <div>
             <label class="label">Ưu tiên</label>
             <input type="text" class="input input-bordered w-full" v-model="botDetail.priority" />
+          </div>
+
+          <div>
+            <label class="label">Mô hình</label>
+            <select
+              class="select"
+              style="width: 100% !important;"
+              v-model="botDetail.models">
+              <option value="1">Gemini</option>
+              <option value="2">GPT</option>
+              <option value="3">Gemini + GPT</option>
+            </select>
           </div>
 
           <div>
