@@ -22,7 +22,8 @@ interface Message {
   contentBot: string,
   creditCost: number,
   createdAt: string,
-  status: number
+  status: number,
+  models: string,
 }
 
 const toast = useToast()
@@ -157,6 +158,7 @@ const confirmDelete = async (id: string) => {
                 <th>Tin nhắn trả về</th>
                 <th>Đánh giá</th>
                 <th>Số tiền đã sử dụng</th>
+                <th>Mô hinh</th>
                 <th>Ngày tạo</th>
               </tr>
             </thead>
@@ -173,6 +175,7 @@ const confirmDelete = async (id: string) => {
                   <span v-else-if="message.status === 2">Không thích</span>
                 </td>
                 <td class="text-center">{{ message.creditCost }}$</td>
+                <td>{{ message.models }}</td>
                 <td>{{ formatDate(message.createdAt) }}</td>
                 <td>
                   <button class="btn btn-ghost btn-xs" @click="getChatDetail(message._id)">
