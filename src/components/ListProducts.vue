@@ -11,7 +11,8 @@ interface File {
 	description: string,
 	price: string,
 	type: string,
-	fileType: string
+	fileType: string,
+	level: string
 }
 
 
@@ -32,7 +33,8 @@ const formStore = reactive({
 	url: '',        // sẽ được set sau khi upload
 	price: '',
 	fileType: '',   // auto từ response upload
-	type: ''
+	type: '',
+	level: 'basic'
 })
 const uploading = ref(false)
 const uploadProgress = ref(0) // 0-100 (fake progress)
@@ -41,12 +43,13 @@ const submitting = ref(false)
 // Edit Store state
 const editing = ref(false)
 const editSubmitting = ref(false)
-const editForm = reactive<{ id: string; name: string; description: string; price: string; type: string }>({
+const editForm = reactive<{ id: string; name: string; description: string; price: string; type: string; level: string }>({
 	id: '',
 	name: '',
 	description: '',
 	price: '',
-	type: ''
+	type: '',
+	level: 'basic'
 })
 
 const openEditModal = (store: File) => {
@@ -55,6 +58,7 @@ const openEditModal = (store: File) => {
 	editForm.description = store.description
 	editForm.price = store.price
 	editForm.type = store.type
+	editForm.level = store.level || 'basic'
 	editing.value = true
 	const modal: any = document.getElementById('modal_edit_store')
 	if (modal?.showModal) modal.showModal()
@@ -66,6 +70,7 @@ const resetEdit = () => {
 	editForm.description = ''
 	editForm.price = ''
 	editForm.type = ''
+	editForm.level = 'basic'
 	editing.value = false
 }
 
@@ -75,6 +80,7 @@ const validateEdit = () => {
 	const priceNum = Number(editForm.price)
 	if (Number.isNaN(priceNum) || priceNum < 0) { toast.error('Giá không hợp lệ', {position:'top'}); return false }
 	if (!editForm.type.trim()) { toast.error('Thiếu type', {position:'top'}); return false }
+	if (!editForm.level.trim()) { toast.error('Thiếu level', {position:'top'}); return false }
 	return true
 }
 
@@ -88,7 +94,8 @@ const updateStore = async () => {
 			name: editForm.name.trim(),
 			description: editForm.description.trim(),
 			price: Number(editForm.price),
-			type: editForm.type.trim()
+			type: editForm.type.trim(),
+			level: editForm.level.trim()
 		}
 		const res = await axios.put(`${urlServer}/update-store`, payload)
 		if (res.status === 200) {
@@ -100,6 +107,7 @@ const updateStore = async () => {
 				listFile.value[idx].description = payload.description
 				listFile.value[idx].price = String(payload.price)
 				listFile.value[idx].type = payload.type
+				listFile.value[idx].level = payload.level
 			}
 			const modal: any = document.getElementById('modal_edit_store')
 			if (modal?.close) modal.close()
@@ -128,6 +136,7 @@ const resetFormStore = () => {
 	formStore.price = ''
 	formStore.fileType = ''
 	formStore.type = ''
+	formStore.level = 'basic'
 	uploading.value = false
 	uploadProgress.value = 0
 	if (uploadTimer) clearInterval(uploadTimer)
@@ -161,6 +170,10 @@ const validateStoreForm = (): boolean => {
 		toast.error('Thiếu type', { position: 'top' });
 		return false
 	}
+	if (!formStore.level) {
+		toast.error('Thiếu level', { position: 'top' });
+		return false
+	}
 	return true
 }
 
@@ -180,7 +193,8 @@ const addStore = async () => {
 			url: formStore.url.trim(),
 			price: Number(formStore.price),
 			fileType: formStore.fileType.trim(),
-			type: formStore.type.trim()
+			type: formStore.type.trim(),
+			level: formStore.level.trim()
 		}
 		const res = await axios.post(`${urlServer}/create-store`, payload)
 		if (res.status === 200 || res.data?._id) {
@@ -238,7 +252,8 @@ const loadStores = async (goPage: number = page.value) => {
 			description: item.description ?? '',
 			price: (item.price !== undefined && item.price !== null) ? String(item.price) : '',
 			type: item.type ?? item.mimeType ?? '',
-			fileType: item.fileType ?? item.typeFile ?? ''
+			fileType: item.fileType ?? item.typeFile ?? '',
+			level: item.level ?? 'basic'
 		}))
 			if (page.value === 1) {
 				listFile.value = mapped
@@ -322,7 +337,7 @@ const handleFileChange = async (event: Event) => {
 		formStore.url = res.data
 		formStore.fileType = file.type
 		// set preview
-		selectedFile.value = { previewUrl: URL.createObjectURL(file), file: { _id:'', name:file.name, url:res.data, description:'', price:'', type:file.type, fileType:file.type } }
+		selectedFile.value = { previewUrl: URL.createObjectURL(file), file: { _id:'', name:file.name, url:res.data, description:'', price:'', type:file.type, fileType:file.type, level: formStore.level } }
 		toast.success('Upload thành công', { position: 'top', duration: 2000 })
 	} catch (err: any) {
 		toast.error('Upload thất bại', { position: 'top', duration: 3000 })
@@ -430,6 +445,7 @@ const isDocFile = (type: string | undefined): boolean => {
 													<p class="text-sm font-semibold text-primary">Giá tiền: {{ file.price ? new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND'}).format(Number(file.price)) : 'Miễn phí' }}</p>
 													<p class="text-xs text-gray-600 line-clamp-2" :title="file.description">Mô tả: {{ file.description || 'Không có mô tả' }}</p>
 													<div class="text-[11px] uppercase tracking-wide text-gray-400">Loại: {{ file.type || 'N/A' }}</div>
+													<div class="text-[11px] uppercase tracking-wide text-gray-500">Level: {{ file.level || 'basic' }}</div>
 												</div>
 							</a>
               <div class="flex justify-center mt-2 mb-2">
@@ -514,6 +530,13 @@ const isDocFile = (type: string | undefined): boolean => {
 				<label class="block mb-1 font-medium">Type</label>
 				<input v-model="formStore.type" type="text" class="input input-bordered w-full" placeholder="Loại (category)" />
 			</div>
+			<div class="mb-3">
+				<label class="block mb-1 font-medium">Level</label>
+				<select v-model="formStore.level" class="select select-bordered w-full">
+					<option value="basic">Basic</option>
+					<option value="vip">VIP</option>
+				</select>
+			</div>
 
 
 			<!-- Nút Tải ảnh lên -->
@@ -572,6 +595,13 @@ const isDocFile = (type: string | undefined): boolean => {
 				<div>
 					<label class="block text-sm font-medium mb-1">Type</label>
 					<input v-model="editForm.type" type="text" class="input input-bordered w-full" />
+				</div>
+				<div>
+					<label class="block text-sm font-medium mb-1">Level</label>
+					<select v-model="editForm.level" class="select select-bordered w-full">
+						<option value="basic">Basic</option>
+						<option value="vip">VIP</option>
+					</select>
 				</div>
 			</div>
 			<div class="flex justify-end gap-2 mt-5">

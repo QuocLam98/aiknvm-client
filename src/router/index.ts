@@ -28,6 +28,7 @@ import ListField from '@/components/List-Field.vue';
 import ChatImagePre from '@/components/Chat-image-pre.vue';
 import ChatImageHistoryPre from '@/components/Chat-image-history-pre.vue';
 import ListProducts from '@/components/ListProducts.vue';
+import ProductStoreView from '@/views/ProductStoreView.vue';
 
 const routes = [
   { path: '/', component: HomeView, meta: { public: true } },
@@ -54,6 +55,7 @@ const routes = [
       { path: 'chatbox/setting', component: SettingChat },
       { path: 'chatbox/store', component: StorageImage },
       { path: 'payment', component: Payment },
+  { path: 'store-products', component: ProductStoreView },
       { path: 'list-user', component: ListUser },
       { path: 'list-bot', component: ListBot },
       { path: 'list-field', component: ListField },
