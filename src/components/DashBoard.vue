@@ -288,7 +288,12 @@ const logout = () => {
           </div>
         </div>
         <div class="navbar-end flex gap-4">
-          <button class="btn btn-outline btn-info" @click="goToStoreProducts">Kho sản phẩm</button>
+          <button
+            v-if="checkRole"
+            class="btn btn-outline btn-info"
+            @click="goToStoreProducts">
+            Kho sản phẩm
+          </button>
           <button class="btn btn-pay" @click="showModal2 = true">Nạp tiền</button>
           <button class="btn btn-primary" @click="logout" to="/login">
             <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" viewBox="0 0 24 24">

@@ -57,6 +57,88 @@ const parseStoreUsed = (value: unknown): boolean => {
   return false;
 };
 
+const mimeExtensionMap: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'text/plain': 'txt',
+  'text/markdown': 'md',
+  'text/csv': 'csv',
+};
+
+const sanitizeFileName = (value: string) => {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, ' ')
+    .replace(/\s+/g, '-');
+  const trimmed = normalized.replace(/-+/g, '-').replace(/^[-_.]+|[-_.]+$/g, '');
+  return trimmed || 'san-pham';
+};
+
+const getFileNameFromUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    const pathname = decodeURIComponent(parsed.pathname);
+    const lastSegment = pathname.split('/').filter(Boolean).pop();
+    return lastSegment ?? '';
+  } catch (_error) {
+    const segments = url.split('?')[0]?.split('/') ?? [];
+    return decodeURIComponent(segments.pop() ?? '');
+  }
+};
+
+const extractExtension = (mimeType?: string, fallbackUrlName?: string) => {
+  if (mimeType) {
+    if (mimeExtensionMap[mimeType]) return mimeExtensionMap[mimeType];
+    const parts = mimeType.split('/');
+    if (parts.length === 2 && parts[1]) {
+      return parts[1].split(';')[0]?.trim() ?? '';
+    }
+  }
+  if (!fallbackUrlName) return '';
+  const dotIndex = fallbackUrlName.lastIndexOf('.');
+  if (dotIndex === -1) return '';
+  return fallbackUrlName.slice(dotIndex + 1);
+};
+
+const buildDownloadFileName = (product: StoreProduct, mimeFromResponse?: string) => {
+  const rawName = product.name || 'san-pham';
+  const urlFileName = getFileNameFromUrl(product.url || '');
+  const urlBaseName = urlFileName.replace(/\.[^.]+$/, '');
+  const sanitizedBase = sanitizeFileName(urlBaseName || rawName);
+  const extension = extractExtension(product.fileType || mimeFromResponse, urlFileName);
+  return extension ? `${sanitizedBase}.${extension}` : sanitizedBase;
+};
+
+const downloadProductFile = async (product: StoreProduct) => {
+  if (!product.url) {
+    addError('Sản phẩm chưa có đường dẫn tải xuống.');
+    return;
+  }
+
+  try {
+    const response = await axios.get(product.url, { responseType: 'blob' });
+    const mimeType = product.fileType || response.headers?.['content-type'];
+    const blob = new Blob([response.data], { type: mimeType || 'application/octet-stream' });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = buildDownloadFileName(product, mimeType);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+    toast.success('Đã bắt đầu tải xuống sản phẩm.', { position: 'top', duration: 3000 });
+  } catch (error: any) {
+    if (error?.response?.status === 401) {
+      addError('Bạn không có quyền tải sản phẩm này.');
+      return;
+    }
+    addError('Không thể tải xuống sản phẩm. Vui lòng thử lại sau.');
+  }
+};
+
 const visibleProducts = computed(() => products.value);
 
 const hasVipHidden = computed(() => !storeUsed.value && products.value.some(product => product.level?.toLowerCase() === 'vip'));
@@ -80,8 +162,12 @@ const formatPrice = (value: string) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
-const handlePurchase = (_product: StoreProduct) => {
-  router.push('/dashboard/payment');
+const handlePurchase = async (product: StoreProduct) => {
+  if (!canAccessProduct(product)) {
+    addError('Bạn cần nâng cấp tài khoản để tải sản phẩm này.');
+    return;
+  }
+  await downloadProductFile(product);
 };
 
 const goToUpgrade = () => {
