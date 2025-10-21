@@ -176,7 +176,7 @@ const sendMessage = async () => {
   previewFile.value = null
 
   try {
-    const response = await axios.post(`${urlServer}/create-message-image-pre`, formData, {
+    const response = await axios.post(`${urlServer}/create-message-image-pre-gemini`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
