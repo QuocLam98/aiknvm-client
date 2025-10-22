@@ -20,10 +20,25 @@ interface Bot {
   models: string
 }
 
-interface SelectedFile extends File {
+interface BotFileItem {
   id: string
-  previewUrl?: string
+  name: string
+  previewUrl: string
+  type: string
 }
+
+const TOAST_DEFAULT_DURATION = 3000
+const TOAST_LONG_DURATION = 8000
+const ALLOWED_UPLOAD_TYPES = new Set([
+  'text/plain',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword'
+])
+
+const getDialog = (id: string) => document.getElementById(id) as HTMLDialogElement | null
+const openDialog = (id: string) => getDialog(id)?.showModal()
+const closeDialog = (id: string) => getDialog(id)?.close()
 
 // State
 const { loadBots } = useListBot()
@@ -46,13 +61,24 @@ const botDetail = reactive({
 })
 const titleModal = ref('')
 const toast = useToast()
+const showToastError = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.error(message, {
+    position: 'top',
+    duration
+  })
+}
+
+const showToastSuccess = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.success(message, {
+    position: 'top',
+    duration
+  })
+}
 const urlServer = import.meta.env.VITE_URL_SERVER
-const fileInput = ref<HTMLInputElement>()
+const uploadFileInput = ref<HTMLInputElement>()
 const imageFileInput = ref<HTMLInputElement>()
-const selectedFile = ref<{ previewUrl: string; file: File } | null>(null);
-const previewImageUrl = ref<string | null>(null)
-const imageFile = ref<File | null>(null)
-const selectedFiles = ref<SelectedFile[]>([])
+const selectedFile = ref<{ previewUrl: string; file: File } | null>(null)
+const selectedFiles = ref<BotFileItem[]>([])
 const idBot = ref('')
 const imageFileDetail = ref<File | null>(null)
 const previewImageUrlDetail = ref<string | null>(null)
@@ -74,13 +100,14 @@ const fetchBots = async () => {
     totalItems.value = response.data.total
   } catch (error) {
     console.error('Lỗi khi lấy dữ liệu:', error)
+    showToastError('Lỗi khi lấy danh sách bot!')
   } finally {
     loading.value = false
   }
 }
 
 function triggerFileInput() {
-  fileInput.value?.click()
+  uploadFileInput.value?.click()
 }
 
 function triggerFileInputDetail() {
@@ -90,16 +117,17 @@ function triggerFileInputDetail() {
 //xử lý modal
 
 const closeModalFile = () => {
-  const modal: any = document.getElementById('modal_bot_file')
-  if (modal?.close) modal.close()
+  closeDialog('modal_bot_file')
 }
 
 const closeModelAddFile = () => {
-  selectedFile.value = null;
-  const modal: any = document.getElementById('modal_bot_chosse_file')
-  if (modal?.close) modal.close()
-  const modalFile: any = document.getElementById('modal_bot_file')
-  if (modalFile?.showModal) modalFile.showModal()
+  if (selectedFile.value?.previewUrl) {
+    URL.revokeObjectURL(selectedFile.value.previewUrl)
+  }
+  selectedFile.value = null
+  closeDialog('modal_bot_chosse_file')
+  openDialog('modal_bot_file')
+  if (uploadFileInput.value) uploadFileInput.value.value = ''
 }
 
 const closeModal = () => {
@@ -108,28 +136,23 @@ const closeModal = () => {
   botDetail.description = ''
   botDetail.priority = '0'
   botEdit.value = null
-  imageFileDetail.value = null
-  previewImageUrlDetail.value = ''
   selectedFieldId.value = ''
-  resetImage()
+  resetImage({ clearPreview: true })
 
-  const modal: any = document.getElementById('modal_bot_detail')
-  if (modal?.close) modal.close()
+  closeDialog('modal_bot_detail')
 }
 
 
 const openModalChoose = () => {
-  const modalChoose: any = document.getElementById('modal_bot_chosse_file')
-  if (modalChoose?.showModal) modalChoose.showModal()
-  const modal: any = document.getElementById('modal_bot_file')
-  if (modal?.close) modal.close()
+  openDialog('modal_bot_chosse_file')
+  closeDialog('modal_bot_file')
 }
 
 //xử lý file
 
 const uploadImage = async () => {
   if (!selectedFile.value) {
-    toast.error('Vui lòng chọn file tải lên!', { position: 'top', duration: 3000 });
+    showToastError('Vui lòng chọn file tải lên!')
     return;
   }
 
@@ -144,36 +167,50 @@ const uploadImage = async () => {
       }
     });
 
-    toast.success('Tải file thành công!', { position: 'top', duration: 3000 });
+    showToastSuccess('Tải file thành công!')
 
-    selectedFile.value = null;
-    const modal: any = document.getElementById('modal_bot_chosse_file')
-    if (modal?.close) modal.close()
+    if (selectedFile.value.previewUrl) {
+      URL.revokeObjectURL(selectedFile.value.previewUrl)
+    }
+    selectedFile.value = null
+    if (uploadFileInput.value) uploadFileInput.value.value = ''
 
+    closeDialog('modal_bot_chosse_file')
+    if (idBot.value) await loadBotFiles(idBot.value)
   } catch (error) {
-    toast.error('Lỗi khi tải file!', { position: 'top', duration: 3000 });
-    const modal: any = document.getElementById('modal_bot_chosse_file')
-    if (modal?.close) modal.close()
+    showToastError('Lỗi khi tải file!')
+    closeDialog('modal_bot_chosse_file')
   }
 }
 
-const resetImage = () => {
-  imageFile.value = null
-  previewImageUrl.value = ''
+interface ResetImageOptions {
+  clearPreview?: boolean
 }
 
-const isImageFile = (file: any) => {
-  return file.type?.startsWith('image/');
+const resetImage = (options: ResetImageOptions = {}) => {
+  const { clearPreview = false } = options
+
+  if (previewImageUrlDetail.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(previewImageUrlDetail.value)
+  }
+
+  if (clearPreview) {
+    previewImageUrlDetail.value = ''
+  }
+
+  imageFileDetail.value = null
+  if (imageFileInput.value) imageFileInput.value.value = ''
 }
+
+const isImageFile = (file: BotFileItem) => file.type?.startsWith('image/')
 
 const removeFile = async (id: string) => {
   try {
     await axios.put(`${urlServer}/delete-bot-file/` + id)
-    toast.success('Xóa file thành công!', { position: 'top', duration: 3000 });
-    const modalFile: any = document.getElementById('modal_bot_file')
-    if (modalFile?.close) modalFile.close()
+    selectedFiles.value = selectedFiles.value.filter(file => file.id !== id)
+    showToastSuccess('Xóa file thành công!')
   } catch (error) {
-    toast.error('Lỗi khi xóa file!', { position: 'top', duration: 3000 });
+    showToastError('Lỗi khi xóa file!')
   }
 }
 
@@ -182,23 +219,18 @@ const handleFileChange = (event: Event) => {
   const file = input.files?.[0];
 
   if (file) {
-    const allowedTypes = [
-      'text/plain',                // .txt
-      'application/pdf',          // .pdf
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // .docx
-    ]
-
-    if (!allowedTypes.includes(file.type)) {
-      input.value = '' // reset input
-      toast.error('Sai định dạng file !', {
-      position: 'top',
-      duration: 3000
-      })
+    if (!ALLOWED_UPLOAD_TYPES.has(file.type)) {
+      input.value = ''
+      showToastError('Sai định dạng file !')
       return
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    selectedFile.value = { file, previewUrl };
+    if (selectedFile.value?.previewUrl) {
+      URL.revokeObjectURL(selectedFile.value.previewUrl)
+    }
+
+    const previewUrl = URL.createObjectURL(file)
+    selectedFile.value = { file, previewUrl }
   }
 }
 
@@ -206,6 +238,9 @@ const handleImageChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
+    if (previewImageUrlDetail.value) {
+      URL.revokeObjectURL(previewImageUrlDetail.value)
+    }
     imageFileDetail.value = file
     previewImageUrlDetail.value = URL.createObjectURL(file)
   }
@@ -218,20 +253,14 @@ const confirmDelete = async (id: string) => {
   try {
     await axios.put(`${urlServer}/delete-bot/${id}`)
     bots.value = bots.value.filter(bot => bot._id !== id)
-    toast.success('Xóa thành công bot!', {
-      position: 'top',
-      duration: 3000
-    });
+    showToastSuccess('Xóa thành công bot!')
     if (bots.value.length === 1 && currentPage.value > 1) {
       currentPage.value--
     }
     await fetchBots()
     eventBus.reloadBots();
   } catch (error) {
-    toast.error('Lỗi xóa bot thất bại!', {
-      position: 'top',
-      duration: 3000
-    });
+    showToastError('Lỗi xóa bot thất bại!')
   }
 }
 
@@ -266,45 +295,49 @@ const getBot = (data: any) => {
   botDetail.priority = botEdit.value?.priority ?? '0'
 }
 
-const getFileDetail = async (id: string) => {
-  const modal: any = document.getElementById('modal_bot_file');
-  if (modal?.showModal) modal.showModal();
-
-  idBot.value = id;
+const loadBotFiles = async (botId: string) => {
+  if (!botId) {
+    selectedFiles.value = []
+    return
+  }
 
   try {
-    const { data } = await axios.get(`${urlServer}/get-bot-file/` + id);
+    const { data } = await axios.get(`${urlServer}/get-bot-file/${botId}`)
 
-    if (data) {
-      selectedFiles.value = data.map((item: any) => ({
+    selectedFiles.value = Array.isArray(data)
+      ? data.map((item: any) => ({
+        id: item._id,
         name: getFileNameFromUrl(item.url),
-        type: item.typeFile, // SỬA Ở ĐÂY nè
         previewUrl: item.url,
-        id: item._id
+        type: item.typeFile ?? ''
       }))
-    } else {
-      selectedFiles.value = [];
-    }
+      : []
   } catch (error) {
-    console.error('Error fetching files:', error);
-    selectedFiles.value = [];
+    console.error('Error fetching bot files:', error)
+    selectedFiles.value = []
+    showToastError('Lỗi khi lấy danh sách file!')
   }
 }
 
-const getFileType = (file: any) => {
-  // Lấy đuôi file từ URL
-  const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-  if (imageExtensions.includes(fileExtension)) {
-    return fileExtension.toUpperCase(); // Trả về đuôi ảnh (ví dụ JPG, PNG)
+const getFileDetail = async (id: string) => {
+  idBot.value = id
+  await loadBotFiles(id)
+  openDialog('modal_bot_file')
+}
+
+const getFileType = (file: BotFileItem): string => {
+  const type = file.type?.toLowerCase() ?? ''
+
+  if (type.startsWith('image/')) {
+    return type.split('/')[1]?.toUpperCase() ?? 'IMAGE'
   }
-  // Kiểm tra các loại file dựa trên đuôi file
-  if (fileExtension === 'pdf') return fileExtension;
-  if (fileExtension === 'doc' || fileExtension === 'docx') return fileExtension;
-  if (fileExtension === 'txt') return fileExtension;
-  
-  // Trường hợp không xác định, trả về Unknown
-  return fileExtension.toUpperCase() || 'Unknown';
+
+  if (type.includes('pdf')) return 'PDF'
+  if (type.includes('word') || type.includes('doc')) return 'DOCX'
+  if (type.includes('text')) return 'TXT'
+
+  const extension = file.name.split('.').pop()?.toUpperCase()
+  return extension || 'UNKNOWN'
 }
 
 const getFileNameFromUrl = (url: string) => {
@@ -312,9 +345,8 @@ const getFileNameFromUrl = (url: string) => {
 }
 
 const getBotDetail = async (id: string) => {
-  previewImageUrlDetail.value = null
-  imageFileDetail.value = null
-  imageFileInput.value!.value = ''
+  resetImage({ clearPreview: true })
+
   if (id === '0') {
     titleModal.value = 'Thêm mới bot AI'
     botEdit.value = null
@@ -322,80 +354,68 @@ const getBotDetail = async (id: string) => {
     botDetail.templateMessage = ''
     botDetail.description = ''
     botDetail.priority = '0'
-    const modal: any = document.getElementById('modal_bot_detail')
-    if (modal?.showModal) modal.showModal()
+    botDetail.status = '0'
+    botDetail.models = '1'
+    openDialog('modal_bot_detail')
+    return
   }
-  else {
-    titleModal.value = 'Cập nhật bot AI'
-    const findBot = bots.value.find(x => x._id === id)
-    getBot(findBot)
-    // Mở modal
-    const modal: any = document.getElementById('modal_bot_detail')
-    if (modal?.showModal) modal.showModal()
+
+  titleModal.value = 'Cập nhật bot AI'
+  const findBot = bots.value.find(x => x._id === id)
+
+  if (!findBot) {
+    showToastError('Không tìm thấy bot!')
+    return
   }
+
+  getBot(findBot)
+  openDialog('modal_bot_detail')
 }
 
 const updateBotDetail = async () => {
   const formData = new FormData()
-  if (!botEdit.value?._id) {
-    try {
-      formData.append('name', botDetail.name || '')
-      formData.append('templateMessage', botDetail.templateMessage || '')
-      formData.append('description', botDetail.description || '')
-      formData.append('status', botDetail.status)
-      formData.append('priority', botDetail.priority || '0')
-      formData.append('models', botDetail.models || '1')
-     if(imageFileDetail.value) formData.append('image', imageFileDetail.value)
-      const response = await axios.post(`${urlServer}/registerBot`,formData)
+  formData.append('name', botDetail.name || '')
+  formData.append('templateMessage', botDetail.templateMessage || '')
+  formData.append('description', botDetail.description || '')
+  formData.append('status', botDetail.status)
+  formData.append('priority', botDetail.priority || '0')
+  formData.append('models', botDetail.models || '1')
+  if (imageFileDetail.value) formData.append('image', imageFileDetail.value)
+
+  const isCreate = !botEdit.value?._id
+
+  try {
+    const response = isCreate
+      ? await axios.post(`${urlServer}/registerBot`, formData)
+      : await axios.put(`${urlServer}/update-bot/${botEdit.value!._id}`, formData)
+
+    if (isCreate) {
       bots.value.unshift(response.data)
-      imageFileDetail.value = null
-      previewImageUrlDetail.value = ''
       selectedFieldId.value = ''
       botDetail.priority = '0'
-      toast.success('Thêm mới thành công!', { position: 'top', duration: 3000 })
-      const modal: any = document.getElementById('modal_bot_detail')
-      if (modal?.close) modal.close()
-      await loadBots()
-    } catch (error) {
-      toast.error('Lỗi khi lưu dữ liệu!', { position: 'top', duration: 3000 })
-      const modal: any = document.getElementById('modal_bot_detail')
-      if (modal?.close) modal.close()
+      showToastSuccess('Thêm mới thành công!')
+    } else {
+      const index = bots.value.findIndex(x => x._id === response.data._id)
+      if (index !== -1) {
+        bots.value[index] = response.data
+      }
+      showToastSuccess('Cập nhật thành công!')
     }
-  } else {
-    try {
-      formData.append('name', botDetail.name || '')
-      formData.append('templateMessage', botDetail.templateMessage || '')
-      formData.append('description', botDetail.description || '')
-      formData.append('status', botDetail.status)
-      formData.append('priority', botDetail.priority || '0')
-      formData.append('models', botDetail.models || '1')
-      if(imageFileDetail.value) formData.append('image', imageFileDetail.value)
-      const response = await axios.put(`${urlServer}/update-bot/${botEdit.value._id}`, formData)
-      const findIndex = bots.value.findIndex(x => x._id === response.data._id)
-      bots.value[findIndex] = response.data
-      toast.success('Cập nhật thành công!', { position: 'top', duration: 3000 })
-      const modal: any = document.getElementById('modal_bot_detail')
-      if (modal?.close) modal.close()
-      await loadBots()
-      // Reset form state after update so next open is clean (unless editing again)
-      botDetail.priority = '0'
-    } catch (error) {
-      toast.error('Lỗi khi lưu dữ liệu!', { position: 'top', duration: 3000 })
-      const modal: any = document.getElementById('modal_bot_detail')
-      if (modal?.close) modal.close()
-    }
+
+    resetImage({ clearPreview: true })
+    closeDialog('modal_bot_detail')
+    await loadBots()
+  } catch (error) {
+    showToastError('Lỗi khi lưu dữ liệu!')
+    closeDialog('modal_bot_detail')
   }
 }
 
-watch([keyword], debouncedFetch)
+watch(keyword, debouncedFetch)
 
 watch([currentPage, perPage], fetchBots)
 
 onMounted(fetchBots)
-
-const changePerPage = () => {
-  currentPage.value = 1
-}
 </script>
 
 <template>
@@ -669,17 +689,9 @@ const changePerPage = () => {
             <span class="text-gray-400">Chưa có file</span>
           </div>
         </div>
-
-
-        <!-- Input file ẩn -->
-        <input ref="fileInput" type="file" class="hidden" accept="image/*,.pdf,.doc,.docx,.txt" multiple
-          @change="handleFileChange" />
       </section>
 
 
-      <!-- Input file ẩn -->
-      <input ref="fileInput" type="file" class="hidden" accept="image/*,.pdf,.doc,.docx,.txt"
-        @change="handleFileChange" />
     </div>
 
     <form method="dialog" class="modal-backdrop">
@@ -718,7 +730,7 @@ const changePerPage = () => {
         </div>
 
         <!-- input file ẩn -->
-        <input ref="fileInput" type="file" class="hidden" accept=".pdf,.txt,.docx"
+        <input ref="uploadFileInput" type="file" class="hidden" accept=".pdf,.txt,.doc,.docx"
           @change="handleFileChange" />
       </div>
 

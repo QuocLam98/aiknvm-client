@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
-import { useToast } from 'vue-toast-notification';
+import { useToast } from 'vue-toast-notification'
 import { useRoute, useRouter } from 'vue-router'
 
 interface ChatMessage {
@@ -13,40 +13,55 @@ interface ChatMessage {
 }
 
 interface Bot {
-  _id: string,
-  name: string,
-  description: string,
-  template: string,
+  _id: string
+  name: string
+  description: string
+  template: string
   image?: string
 }
 
-const isLoaded = ref(false)
+const TOAST_DEFAULT_DURATION = 3000
+const TOAST_LONG_DURATION = 8000
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024
+const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
+const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'text/plain',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+const SUPPORTED_ATTACHMENT_TYPES = new Set([...IMAGE_MIME_TYPES, ...DOCUMENT_MIME_TYPES])
 
-const onImageLoad = () => {
-  isLoaded.value = true
+const toast = useToast()
+const showToastError = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.error(message, {
+    position: 'top',
+    duration
+  })
 }
-const router = useRouter()
-const isTyping = ref(false)
+
 const route = useRoute()
-const code = ref<string>('')
+const router = useRouter()
+
+const isLoaded = ref(false)
+const isTyping = ref(false)
+const code = ref('')
 const historyId = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const toast = useToast()
 const messages = ref<ChatMessage[]>([])
 const chatContainer = ref<HTMLElement | null>(null)
 const previewFile = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)
-
-const page = ref(1)
-const limit = 20
-const hasMore = ref(true)
-const loading = ref(false)
 const newMessage = ref('')
-const isBotTyping = ref(false);  // Trạng thái đang trả lời
 const urlServer = import.meta.env.VITE_URL_SERVER
 const botImage = ref('')
 const getBotData = ref<Bot>()
-const botPremium = import.meta.env.VITE_CREATE_IMAGE_PREMIUM
+const limit = 20
+const loading = ref(false)
+const hasMore = ref(true)
+
+const onImageLoad = () => {
+  isLoaded.value = true
+}
 
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
@@ -59,7 +74,7 @@ const renderMarkdown = async (markdown: string) => {
   const file = await unified()
     .use(remarkParse)
     .use(remarkRehype)
-  .use(rehypeHighlight, { languages: hlLanguages as any })
+    .use(rehypeHighlight, { languages: hlLanguages as any })
     .use(rehypeStringify)
     .process(markdown)
 
@@ -67,241 +82,112 @@ const renderMarkdown = async (markdown: string) => {
 }
 
 const clearPreview = () => {
-  previewUrl.value = ''
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+    (window.URL as any).revokeObjectURL(previewUrl.value)
+  }
+  previewUrl.value = null
   previewFile.value = null
 }
 
 const getBot = async (id: string) => {
+  if (!id) return
   try {
-    const res = await axios.get(`${urlServer}/get-bot/` + id);
-    getBotData.value = res.data  // <-- đây
-  }
-  catch {
-    toast.error('Lỗi khi lấy thông tin bot!', {
-      position: 'top',
-      duration: 3000
-    });
+    const res = await axios.get(`${urlServer}/get-bot/${id}`)
+    getBotData.value = res.data
+  } catch {
+    showToastError('Lỗi khi lấy thông tin bot!')
   }
 }
 
 const autoResize = () => {
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
+  if (!textareaRef.value) return
 
-    // Nếu nội dung rỗng thì reset về chiều cao mặc định
-    if (!textareaRef.value.value) {
-      textareaRef.value.style.height = '1.5rem' // 1 dòng = line-height
-      textareaRef.value.style.overflowY = 'hidden'
-      return
-    }
+  textareaRef.value.style.height = 'auto'
 
-    const scrollHeight = textareaRef.value.scrollHeight
-    const maxHeight = parseFloat(getComputedStyle(textareaRef.value).lineHeight) * 10
+  if (!textareaRef.value.value) {
+    textareaRef.value.style.height = '1.5rem'
+    textareaRef.value.style.overflowY = 'hidden'
+    return
+  }
 
-    textareaRef.value.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
-    textareaRef.value.style.height = Math.min(scrollHeight, maxHeight) + 'px'
+  const scrollHeight = textareaRef.value.scrollHeight
+  const maxHeight = parseFloat(getComputedStyle(textareaRef.value).lineHeight) * 10
+
+  textareaRef.value.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
+  textareaRef.value.style.height = Math.min(scrollHeight, maxHeight) + 'px'
+}
+
+const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+  chatContainer.value?.scrollTo({
+    top: chatContainer.value.scrollHeight,
+    behavior
+  })
+}
+
+const scrollToBottomInstant = () => {
+  if (chatContainer.value) {
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
   }
 }
 
-watch(() => route.query.code, async (newCode) => {
-  if (typeof newCode === 'string') {
-    await nextTick();
-    // Cập nhật botIdSelect và reset các giá trị khác
-    historyId.value = newCode || ''
-    messages.value = []
-    // Reset preview file và URL
-    previewFile.value = null
-    previewUrl.value = ''// Đặt previewUrl về chuỗi rỗng để ẩn nó
-
-    await fetchMessages()
-    // Gọi lại autoResize để điều chỉnh lại kích thước của textarea
-    autoResize()
-  }
-}, { immediate: true }) // chạy luôn khi component mount
-
-onMounted(async () => {
-  const queryCode = route.query.code
-  if (typeof queryCode === 'string' && queryCode.trim() !== '') {
-    code.value = queryCode
-    historyId.value = code.value
-    chatContainer.value = null
-    await fetchMessages()
-  } else {
-    // Ví dụ: chuyển hướng nếu thiếu code
-    router.push('/dashboard')
-    // Hoặc throw lỗi, hoặc hiện dialog báo lỗi...
-  }
-  autoResize()
-})
-
-watch(newMessage, () => {
-  autoResize()
-})
-
-// onMounted(() => {
-//   fetchMessages()
-//   autoResize()
-// })
-
-function isValidUrl(str: string) {
-  const pattern = /^(https?:\/\/[^\s]+)$/;
-  return pattern.test(str);
-}
+const isValidUrl = (str: string) => /^(https?:\/\/[^\s]+)$/.test(str)
 
 const openImage = (url: string) => {
-  window.open(url, '_blank');
+  window.open(url, '_blank')
 }
 
-const sendMessage = async () => {
-  const formData = new FormData()
-  const content = newMessage.value.trim()
-  const token = localStorage.getItem('token')
-
-  if (!content) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
-    return
+const validateAttachment = (file: File) => {
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    showToastError('Dung lượng file không được quá 20MB.', TOAST_LONG_DURATION)
+    return false
   }
 
-  formData.append('bot', botImage.value)
-  formData.append('token', token || '')
-  if (content) formData.append('content', content)
-  formData.append('historyChat', historyId.value || '')
-  isTyping.value = true // 👈 Bắt đầu gõ
-  messages.value.push({
-    sender: 'user',
-    content: content || (previewFile.value?.name ?? 'File đính kèm'),
-    fileUser: previewUrl.value ? previewUrl.value : '',
-    createdAt: new Date().toISOString()
-  })
-  nextTick(() => {
-    chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
-  })
-  newMessage.value = ''
-  previewUrl.value = null
-  isBotTyping.value = true
-  messages.value.push({
-    sender: 'bot',
-    content: 'Đang trả lời...',
-    createdAt: new Date().toISOString()
-  })
-  nextTick(() => {
-    autoResize()
-  })
-  // Kiểm tra nếu bot là botImage, chỉ chấp nhận ảnh
-  // Kiểm tra nếu previewFile là null hoặc không phải là ảnh
-  if (previewFile.value && !previewFile.value.type.startsWith('image/')) {
-    toast.error('Chỉ chấp nhận ảnh!', {
-      position: 'top',
-      duration: 3000
-    })
-    previewFile.value = null
-    previewUrl.value = null
-    isBotTyping.value = false
-    return
-  }
-  previewFile.value = null
-
-  try {
-    const response = await axios.post(`${urlServer}/create-message-image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-
-    if (response.data.status === 400)
-    {
-      router.push('/login')
-      localStorage.clear()
-      return
-    }
-
-    previewFile.value = null
-    previewUrl.value = null
-    messages.value.pop()
-    const { contentBot, createdAt } = response.data // Lấy thêm imageUrl từ response
-
-
-    // Kiểm tra xem contentBot có phải là một URL không
-    messages.value.push({
-      sender: 'bot',
-      content: contentBot,
-      imageUrl: isValidUrl(contentBot) ? contentBot : null,
-      createdAt
-    })
-
-    nextTick(() => {
-      chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
-    })
-
-    nextTick(() => {
-      textareaRef.value?.focus()
-    })
-  } catch (error) {
-    toast.error('Lỗi khi gửi tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
-    const typingIndex = messages.value.findIndex(
-      (msg) => msg.sender === 'bot' && msg.content === 'Đang trả lời...'
-    )
-    if (typingIndex !== -1) {
-      messages.value.splice(typingIndex, 1);
-    }
-    // Thêm câu trả lời lỗi
-    messages.value.push({
-      sender: 'bot',
-      content: 'Bạn hãy gõ lại câu hỏi rõ ràng hơn.',
-      createdAt: new Date().toISOString(),
-    })
-    isTyping.value = false // 👈 Bắt đầu gõ
-  } finally {
-    isBotTyping.value = false
-    isTyping.value = false // 👈 Bắt đầu gõ
+  if (!SUPPORTED_ATTACHMENT_TYPES.has(file.type)) {
+    showToastError('Định dạng file không được hỗ trợ.', TOAST_LONG_DURATION)
+    return false
   }
 
+  return true
 }
 
 const downloadImage = async (imageUrl: string) => {
   try {
-    const response = await axios.post(`${urlServer}/download-file`, {
-      url: imageUrl
-    }, {
-      responseType: 'blob' // Bắt buộc để nhận đúng dạng file
-    });
-
-    const blob = new Blob([response.data]);
-    const blobUrl = window.URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = imageUrl.split('/').pop() || 'download.jpg';
-    link.click();
-    window.URL.revokeObjectURL(blobUrl);
-  } catch (err) {
-    toast.error('Tải ảnh thất bại!', {
-      position: 'top',
-      duration: 3000
+    const response = await axios.post(`${urlServer}/download-file`, { url: imageUrl }, {
+      responseType: 'blob'
     })
+
+    const blob = new Blob([response.data])
+    const blobUrl = window.URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = imageUrl.split('/').pop() || 'download.jpg'
+    link.click()
+    window.URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    showToastError('Tải ảnh thất bại!')
   }
-};
+}
 
 const fetchMessages = async (isLoadMore = false) => {
-  loading.value = true;
-  const token = localStorage.getItem('token');
+  loading.value = true
 
   try {
-    const res = await axios.get(`${urlServer}/list-message-history/` + historyId.value, {
-    });
+    const res = await axios.get(`${urlServer}/list-message-history/${historyId.value}`)
+    const rawMessages = Array.isArray(res.data) ? res.data : []
+    if (!rawMessages.length) {
+      messages.value = []
+      hasMore.value = false
+      return
+    }
 
-    botImage.value = res.data[0].bot
-
+    botImage.value = rawMessages[0].bot
     await getBot(botImage.value)
-    const rawMessages = res.data.reverse();
 
-    const newMessages: ChatMessage[] = [];
+    const orderedMessages = rawMessages.reverse()
+    const newMessages: ChatMessage[] = []
 
-    for (const msg of rawMessages) {
+    for (const msg of orderedMessages) {
       if (msg.contentUser) {
         newMessages.push({
           sender: 'user',
@@ -312,86 +198,173 @@ const fetchMessages = async (isLoadMore = false) => {
       }
 
       if (msg.contentBot) {
-        const renderedContent = await renderMarkdown(msg.contentBot);
+        const renderedContent = await renderMarkdown(msg.contentBot)
         newMessages.push({
           sender: 'bot',
           content: renderedContent,
           createdAt: msg.createdAt,
-          imageUrl: isValidUrl(msg.contentBot) ? msg.contentBot : undefined // ✅ kiểm tra nếu contentBot là URL
-        });
-
+          imageUrl: isValidUrl(msg.contentBot) ? msg.contentBot : undefined
+        })
       }
     }
 
-    if (isLoadMore) {
-      messages.value = [...newMessages, ...messages.value];
-    } else {
-      messages.value = [...newMessages, ...messages.value];
-    }
+    messages.value = isLoadMore
+      ? [...newMessages, ...messages.value]
+      : newMessages
 
     if (newMessages.length < limit) {
-      hasMore.value = false;
+      hasMore.value = false
     }
+
     await nextTick()
     scrollToBottomInstant()
   } catch (error) {
+    showToastError('Không thể tải lịch sử trò chuyện!')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
-const scrollToBottomInstant = () => {
-  if (chatContainer.value) {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+const sendMessage = async () => {
+  const content = newMessage.value.trim()
+  const token = localStorage.getItem('token') ?? ''
+
+  if (!content) {
+    showToastError('Yêu cầu nhập nội dung tin nhắn!')
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('bot', botImage.value)
+  formData.append('token', token)
+  formData.append('content', content)
+  formData.append('historyChat', historyId.value || '')
+
+  isTyping.value = true
+  messages.value.push({
+    sender: 'user',
+    content,
+    fileUser: previewUrl.value ?? '',
+    createdAt: new Date().toISOString()
+  })
+
+  await nextTick()
+  scrollToBottom()
+
+  newMessage.value = ''
+  clearPreview()
+  autoResize()
+
+  messages.value.push({
+    sender: 'bot',
+    content: 'Đang trả lời...',
+    createdAt: new Date().toISOString()
+  })
+
+  try {
+    const response = await axios.post(`${urlServer}/create-message-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    if (response.data.status === 400) {
+      router.push('/login')
+      localStorage.clear()
+      return
+    }
+
+    messages.value.pop()
+    const { contentBot, createdAt } = response.data
+
+    messages.value.push({
+      sender: 'bot',
+      content: contentBot,
+      imageUrl: isValidUrl(contentBot) ? contentBot : undefined,
+      createdAt
+    })
+
+    await nextTick()
+    scrollToBottom()
+
+    nextTick(() => {
+      textareaRef.value?.focus()
+    })
+  } catch (error) {
+    showToastError('Lỗi khi gửi tin nhắn!')
+
+    const typingIndex = messages.value.findIndex(
+      (msg) => msg.sender === 'bot' && msg.content === 'Đang trả lời...'
+    )
+    if (typingIndex !== -1) {
+      messages.value.splice(typingIndex, 1)
+    }
+
+    messages.value.push({
+      sender: 'bot',
+      content: 'Bạn hãy gõ lại câu hỏi rõ ràng hơn.',
+      createdAt: new Date().toISOString()
+    })
+  } finally {
+    isTyping.value = false
   }
 }
 
 const handlePaste = (event: ClipboardEvent) => {
-  // Kiểm tra điều kiện nếu botIdSelect === botImage thì ngừng sự kiện paste
+  const items = event.clipboardData?.items
+  if (!items) return
 
-  // Kiểm tra clipboard có dữ liệu hay không
-  const items = event.clipboardData?.items;
-  if (!items) return;
-
-  // Kiểm tra tất cả các items trong clipboard
   for (const item of items) {
-    if (item.kind === 'file') {
-      const file = item.getAsFile();
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          // Lưu thông tin preview file vào các biến ref
-          previewFile.value = file;
-          previewUrl.value = e.target?.result as string; // Lưu preview URL
-        };
-        reader.readAsDataURL(file); // Convert file thành base64 để preview
-      }
-    }
+    if (item.kind !== 'file') continue
+
+    const file = item.getAsFile()
+    if (!file) continue
+    if (!validateAttachment(file)) continue
+
+    clearPreview()
+    previewFile.value = file
+    previewUrl.value = (window.URL as any).createObjectURL(file)
+    break
   }
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
-  if (isTyping.value === true)
-  {
-    toast.error('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút', {
-      position: 'top',
-      duration: 3000
-    })
-    return
-  }
+    if (isTyping.value) {
+      showToastError('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút')
+      return
+    }
     sendMessage()
   }
-  // Shift + Enter thì không làm gì để textarea tự xuống dòng
 }
 
-const handleDoubleClick = (event: MouseEvent) => {
-  const textarea = event.target as HTMLTextAreaElement
-  textarea.select()
-}
+watch(() => route.query.code, async (newCode) => {
+  if (typeof newCode !== 'string') return
+
+  await nextTick()
+  historyId.value = newCode || ''
+  messages.value = []
+  clearPreview()
+  await fetchMessages()
+  autoResize()
+}, { immediate: true })
+
+onMounted(async () => {
+  const queryCode = route.query.code
+  if (typeof queryCode === 'string' && queryCode.trim()) {
+    code.value = queryCode
+    historyId.value = code.value
+    chatContainer.value = null
+    await fetchMessages()
+  } else {
+    router.push('/dashboard')
+  }
+  autoResize()
+})
+
+watch(newMessage, () => {
+  autoResize()
+})
 </script>
-
 <template>
   <div class="min-h-[calc(100vh-5rem)] relative">
     <div class="bg-zinc-50" style="height: calc(10px - 7.6rem + 105vh);">
@@ -417,7 +390,6 @@ const handleDoubleClick = (event: MouseEvent) => {
         <div v-for="(message, index) in messages" :key="index"
           :class="message.sender === 'user' ? 'chat chat-end' : 'chat chat-start'">
 
-          <!-- Avatar Bot -->
           <div v-if="message.sender === 'bot'" class="chat-image avatar">
             <div v-if="getBotData?.image" class="avatar">
               <div class="w-8 rounded-full">
@@ -426,13 +398,13 @@ const handleDoubleClick = (event: MouseEvent) => {
             </div>
           </div>
 
-          <div v-else v-if="message.fileUser != null
-            && message.fileUser !== '' && message.fileUser != undefined">
-            <img :src="message.fileUser" class="w-96 pb-4 rounded-lg cursor-pointer transition hover:scale-105"
-              alt="User Uploaded Image" @click="openImage(message.fileUser)" />
+          <div v-else-if="message.fileUser" class="pb-4">
+            <img :src="message.fileUser"
+              class="w-96 rounded-lg cursor-pointer transition hover:scale-105"
+              alt="User Uploaded Image"
+              @click="openImage(message.fileUser)" />
           </div>
 
-          <!-- Nội dung chat -->
           <div v-if="!message.imageUrl" class="chat-bubble">
             <span v-if="message.content === 'Đang trả lời...'" class="typing-indicator">
               <span></span><span></span><span></span>
@@ -442,11 +414,14 @@ const handleDoubleClick = (event: MouseEvent) => {
           </div>
           <div v-else class="p-2 flex flex-col items-start gap-2">
             <div class="relative inline-block">
-              <img :src="message.imageUrl" alt="Bot image"
+              <img
+                :src="message.imageUrl"
+                alt="Bot image"
                 class="w-64 h-64 object-cover rounded-md cursor-pointer transition hover:scale-105 duration-700 ease-in-out"
-                :class="isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-md'" @click="openImage(message.imageUrl)"
-                @load="onImageLoad" />
-              <!-- Nút tải xuống -->
+                :class="isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-md'"
+                @click="openImage(message.imageUrl)"
+                @load="onImageLoad"
+              />
               <button @click.prevent="downloadImage(message.imageUrl!)"
                 class="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-gray-200 transition cursor-pointer"
                 title="Tải ảnh xuống">
@@ -471,16 +446,13 @@ const handleDoubleClick = (event: MouseEvent) => {
     <div class="layout-input ">
       <div class="bg-white shadow-xl flex flex-col py-2 px-3 border-l border-t rounded-lg border-base-300 w-full">
         <div class="flex flex-col w-full">
-          <!-- Preview section -->
           <Transition name="fade">
             <div v-if="previewUrl" class="relative mr-2 w-full mb-2">
-              <!-- Nút X -->
               <button @click="clearPreview"
                 class="absolute top-0 right-0 bg-black bg-opacity-50 text-white rounded-full w-5 h-5 flex items-center justify-center z-10 hover:bg-opacity-75">
                 ×
               </button>
 
-              <!-- Nếu là ảnh -->
               <div v-if="previewFile?.type.startsWith('image/')"
                 class="max-w-[150px] max-h-[150px] border rounded overflow-hidden">
                 <img :src="previewUrl" class="object-cover w-full h-auto max-h-[150px]" />
@@ -488,22 +460,18 @@ const handleDoubleClick = (event: MouseEvent) => {
             </div>
           </Transition>
 
-          <!-- Input + buttons -->
           <div class="flex w-full items-center">
-            <!-- Input -->
-            <textarea v-model="newMessage" @input="autoResize" @keydown.enter="sendMessage" @paste="handlePaste"
+            <textarea v-model="newMessage" @input="autoResize" @keydown="handleKeydown" @paste="handlePaste"
               placeholder="Xin mời nhập câu hỏi..."
               class="input-chat w-full border-none focus-within:ring-0 px-0 focus-visible:outline-none resize-none overflow-hidden"
               maxlength="1000" rows="1" ref="textareaRef"
               style="line-height: 1.5rem; max-height: calc(1.5rem * 10); overflow-y: auto;"></textarea>
 
-            <!-- Send button -->
             <svg v-if="isTyping" class="w-10 h-10 ml-2 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
 
-            <!-- Send icon -->
             <svg v-else @click="sendMessage" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img"
               class="icon w-10 h-10 ml-2 text-primary cursor-pointer transition-all active:scale-75" width="1em"
               height="1em" viewBox="0 0 48 48">

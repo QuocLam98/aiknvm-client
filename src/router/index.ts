@@ -1,5 +1,5 @@
 // src/router/index.ts
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
 import LoginView from '@/views/Login.vue';
 import HomeView from '@/views/HomeView.vue';
@@ -9,9 +9,7 @@ import Payment from '@/components/Payment.vue';
 import ListUser from '@/components/ListUser.vue';
 import ListBot from '@/components/ListBot.vue';
 import ListChat from '@/components/ListChat.vue';
-import Verify from '@/components/Verify.vue';
 import ChatBot from '@/components/Chat-bot.vue';
-import ForgotPassword from '@/components/ForgotPassword.vue';
 import ChatImage from '@/components/Chat-image.vue';
 import About from '@/components/About.vue';
 import ChatHistory from '@/components/Chat-history.vue';
@@ -25,14 +23,11 @@ import ChatImageHistoryPre from '@/components/Chat-image-history-pre.vue';
 import ListProducts from '@/components/ListProducts.vue';
 import ProductStoreView from '@/views/ProductStoreView.vue';
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   { path: '/', component: HomeView, meta: { public: true } },
   { path: '/login', component: LoginView, meta: { public: true } },
-  { path: '/verify', component: Verify, meta: { public: true } },
-  { path: '/forgot-password', component: ForgotPassword, meta: { public: true } },
   { path: '/about', component: About, meta: { public: true } },
 
-  // QUAN TRỌNG: callback là public
   { path: '/auth/callback', component: AuthCallback, meta: { public: true } },
 
   {
@@ -44,8 +39,8 @@ const routes = [
       { path: 'list-products', component: ListProducts },
       { path: 'chat', component: Chat },
       { path: 'profile', component: Account },
-      { path: 'payment', component: Payment },
-  { path: 'store-products', component: ProductStoreView },
+    { path: 'payment', component: Payment },
+    { path: 'store-products', component: ProductStoreView },
       { path: 'list-user', component: ListUser },
       { path: 'list-bot', component: ListBot },
       { path: 'list-field', component: ListField },
@@ -62,7 +57,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   linkActiveClass: 'linkActiveClass',
   linkExactActiveClass: 'linkExactActiveClass',
@@ -71,20 +66,19 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token');
   const inGoogleFlow = sessionStorage.getItem('glogin') === '1';
+  const isPublicRoute = Boolean(to.meta?.public);
+  const requiresAuth = Boolean(to.meta?.requiresAuth);
 
-  // Public routes
-  if (to.meta.public) {
+  if (isPublicRoute) {
     if (token && (to.path === '/login' || to.path === '/register')) {
       return next('/dashboard');
     }
     return next();
   }
 
-  // Cho phép callback khi đang redirect flow
   if (to.path === '/auth/callback' && inGoogleFlow) return next();
 
-  // Các route cần auth
-  if (to.meta.requiresAuth) {
+  if (requiresAuth) {
     if (token) return next();
     return next('/login');
   }

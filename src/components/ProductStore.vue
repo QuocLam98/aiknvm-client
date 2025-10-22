@@ -37,7 +37,7 @@ const previewSource = ref('');
 const previewText = ref('');
 const previewLoading = ref(false);
 const previewError = ref('');
-const previewModalId = 'product_preview_modal';
+const previewModalRef = ref<HTMLDialogElement | null>(null);
 
 const addError = (message: string) => {
   if (!errorMessages.value.includes(message)) {
@@ -64,6 +64,25 @@ const mimeExtensionMap: Record<string, string> = {
   'text/plain': 'txt',
   'text/markdown': 'md',
   'text/csv': 'csv',
+};
+
+const mapToStoreProduct = (item: any): StoreProduct => ({
+  _id: String(item._id ?? ''),
+  name: item.name ?? item.title ?? 'No name',
+  description: item.description ?? '',
+  price: item.price !== undefined && item.price !== null ? String(item.price) : '0',
+  url: item.url ?? item.fileUrl ?? '',
+  type: item.type ?? item.mimeType ?? '',
+  fileType: item.fileType ?? item.typeFile ?? '',
+  level: item.level ?? 'basic',
+});
+
+const resetPreviewState = () => {
+  previewProduct.value = null;
+  previewSource.value = '';
+  previewText.value = '';
+  previewError.value = '';
+  previewLoading.value = false;
 };
 
 const sanitizeFileName = (value: string) => {
@@ -175,18 +194,10 @@ const goToUpgrade = () => {
 };
 
 const closePreview = () => {
-  previewProduct.value = null;
-  previewSource.value = '';
-  previewText.value = '';
-  previewError.value = '';
-  previewLoading.value = false;
-  const modal = document.getElementById(previewModalId) as HTMLDialogElement | null;
-  if (modal?.open) modal.close();
-};
-
-const handleModalCancel = (event: Event) => {
-  event.preventDefault();
-  closePreview();
+  resetPreviewState();
+  if (previewModalRef.value?.open) {
+    previewModalRef.value.close();
+  }
 };
 
 const openPreview = async (product: StoreProduct) => {
@@ -197,10 +208,14 @@ const openPreview = async (product: StoreProduct) => {
   previewText.value = '';
   previewSource.value = '';
 
-  const modal = document.getElementById(previewModalId) as HTMLDialogElement | null;
-  modal?.showModal?.();
+  previewModalRef.value?.showModal?.();
 
   try {
+    if (!product.url) {
+      previewError.value = 'Sản phẩm chưa có dữ liệu xem trước.';
+      return;
+    }
+
     if (isImageFile(product.fileType) || isPdfFile(product.fileType)) {
       previewSource.value = product.url;
     } else if (isTextFile(product.fileType)) {
@@ -255,11 +270,13 @@ const fetchUserAccess = async () => {
 };
 
 const fetchProducts = async (pageToLoad: number = 1) => {
-  if (pageToLoad !== 1 && (!hasMore.value || loadingMore.value)) {
+  const isInitialLoad = pageToLoad === 1;
+
+  if (!isInitialLoad && (!hasMore.value || loadingMore.value || productsLoading.value)) {
     return;
   }
 
-  if (pageToLoad === 1) {
+  if (isInitialLoad) {
     if (productsLoading.value) return;
     productsLoading.value = true;
   } else {
@@ -279,27 +296,15 @@ const fetchProducts = async (pageToLoad: number = 1) => {
       return;
     }
 
-    const rawItems: any[] = response.data.data || [];
-    const mapped = rawItems.map(item => ({
-      _id: item._id,
-      name: item.name ?? item.title ?? 'No name',
-      description: item.description ?? '',
-      price: item.price !== undefined && item.price !== null ? String(item.price) : '0',
-      url: item.url ?? item.fileUrl ?? '',
-      type: item.type ?? item.mimeType ?? '',
-      fileType: item.fileType ?? item.typeFile ?? '',
-      level: item.level ?? 'basic',
-    }));
+    const rawItems: any[] = response.data.data ?? [];
+    const incoming = rawItems.map(mapToStoreProduct);
 
-    if (pageToLoad === 1) {
-      products.value = mapped;
+    if (isInitialLoad) {
+      products.value = incoming;
     } else {
       const existingIds = new Set(products.value.map(product => product._id));
-      for (const product of mapped) {
-        if (!existingIds.has(product._id)) {
-          products.value.push(product);
-        }
-      }
+      const freshItems = incoming.filter(product => !existingIds.has(product._id));
+      products.value.push(...freshItems);
     }
 
     page.value = pageToLoad;
@@ -310,12 +315,12 @@ const fetchProducts = async (pageToLoad: number = 1) => {
       hasMore.value = products.value.length < total.value;
     } else {
       total.value = products.value.length;
-      hasMore.value = mapped.length === limit.value;
+      hasMore.value = incoming.length === limit.value;
     }
   } catch (_error) {
     addError('Không thể tải danh sách sản phẩm.');
   } finally {
-    if (pageToLoad === 1) {
+    if (isInitialLoad) {
       productsLoading.value = false;
     } else {
       loadingMore.value = false;
@@ -335,13 +340,9 @@ onMounted(async () => {
   if (loadMoreTrigger.value) {
     getObserver().observe(loadMoreTrigger.value);
   }
-  const modal = document.getElementById(previewModalId) as HTMLDialogElement | null;
-  modal?.addEventListener('cancel', handleModalCancel);
 });
 
 onBeforeUnmount(() => {
-  const modal = document.getElementById(previewModalId) as HTMLDialogElement | null;
-  modal?.removeEventListener('cancel', handleModalCancel);
   closePreview();
   if (intersectionObserver) {
     intersectionObserver.disconnect();
@@ -464,7 +465,7 @@ onBeforeUnmount(() => {
     </div>
   </div>
 
-  <dialog :id="previewModalId" class="modal">
+  <dialog ref="previewModalRef" class="modal" @cancel.prevent="closePreview">
     <div class="modal-box max-w-4xl w-full bg-base-200">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-semibold">Xem trước sản phẩm</h2>
@@ -498,7 +499,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <form method="dialog" class="modal-backdrop" @click.self="closePreview">
-      <button type="button" @click="closePreview">close</button>
+      <button type="button" @click="closePreview">Đóng</button>
     </form>
   </dialog>
 </template>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import axios from 'axios'
-import { useToast } from 'vue-toast-notification';
+import { useToast } from 'vue-toast-notification'
 import { useHistoryChat } from '@/composables/useHistoryChat'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -31,7 +31,7 @@ const onImageLoad = () => {
 const route = useRoute()
 const router = useRouter()
 const code = ref<string>('')
-const isTyping = ref(false) // 👈 Bắt đầu gõ
+const isTyping = ref(false)
 const { loadHistoryChat } = useHistoryChat()
 const historyChat = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -41,44 +41,42 @@ const chatContainer = ref<HTMLElement | null>(null)
 const previewFile = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)
 const newMessage = ref('')
-const isBotTyping = ref(false);  // Trạng thái đang trả lời
 const urlServer = import.meta.env.VITE_URL_SERVER
 const botImage = ref('')
 const getBotData = ref<Bot>()
 
-const renderMarkdown = async (markdown: string) => {
-  const { unified } = await import('unified')
-  const remarkParse = (await import('remark-parse')).default
-  const rehypeStringify = (await import('rehype-stringify')).default
-  const remarkRehype = (await import('remark-rehype')).default
-  const rehypeHighlight = (await import('rehype-highlight')).default
-  const { hlLanguages } = await import('@/utils/hl-languages')
+const TOAST_DEFAULT_DURATION = 3000
+const TOAST_LONG_DURATION = 8000
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024
+const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
+const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'text/plain',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+const SUPPORTED_ATTACHMENT_TYPES = new Set([...IMAGE_MIME_TYPES, ...DOCUMENT_MIME_TYPES])
 
-  const file = await unified()
-    .use(remarkParse)
-    .use(remarkRehype)
-  .use(rehypeHighlight, { languages: hlLanguages as any })
-    .use(rehypeStringify)
-    .process(markdown)
-
-  return String(file)
+const showToastError = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.error(message, {
+    position: 'top',
+    duration
+  })
 }
 
 const clearPreview = () => {
-  previewUrl.value = ''
+  if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+    (window.URL as any).revokeObjectURL(previewUrl.value)
+  }
+  previewUrl.value = null
   previewFile.value = null
 }
 
 const getBot = async () => {
   try {
-    const res = await axios.get(`${urlServer}/get-bot/` + botImage.value);
-    getBotData.value = res.data  // <-- đây
-  }
-  catch {
-    toast.error('Lỗi khi lấy thông tin bot!', {
-      position: 'top',
-      duration: 3000
-    });
+    const res = await axios.get(`${urlServer}/get-bot/${botImage.value}`)
+    getBotData.value = res.data
+  } catch {
+    showToastError('Lỗi khi lấy thông tin bot!')
   }
 }
 
@@ -117,71 +115,52 @@ const openImage = (url: string) => {
 }
 
 const sendMessage = async () => {
-  const formData = new FormData()
   const content = newMessage.value.trim()
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('token') ?? ''
 
   if (!content) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
-    return
-  }
-  else if (previewFile.value && !content) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Yêu cầu nhập nội dung tin nhắn!')
     return
   }
 
+  const formData = new FormData()
   formData.append('bot', botImage.value)
-  formData.append('token', token || '')
-  if (content) formData.append('content', content)
+  formData.append('token', token)
+  formData.append('content', content)
   if (historyChat.value) {
     formData.append('historyChat', historyChat.value)
   }
   if (previewFile.value) formData.append('file', previewFile.value)
   
-  isTyping.value = true // 👈 Bắt đầu gõ
+  isTyping.value = true
   messages.value.push({
     sender: 'user',
-    content: content,
-    fileUser: previewUrl.value ? previewUrl.value : '',
+    content,
+    fileUser: previewUrl.value ?? '',
     createdAt: new Date().toISOString()
   })
-  nextTick(() => {
-    chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
-  })
+  await nextTick()
+  chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
   newMessage.value = ''
-  previewUrl.value = null
-  isBotTyping.value = true
-  nextTick(() => {
-    autoResize()
-  })
+  clearPreview()
+  autoResize()
   messages.value.push({
     sender: 'bot',
     content: 'Đang trả lời...',
     createdAt: new Date().toISOString()
   })
-  
-  previewFile.value = null
 
   try {
     const response = await axios.post(`${urlServer}/create-message-image-pre-gemini`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    if (response.data.status === 400)
-    {
+    if (response.data.status === 400) {
       router.push('/login')
       localStorage.clear()
       return
     }
 
-    previewFile.value = null
-    previewUrl.value = null
     messages.value.pop()
     const { contentBot, createdAt, history, _id } = response.data // Lấy thêm imageUrl từ response
 
@@ -196,9 +175,9 @@ const sendMessage = async () => {
     })
 
 
-    if (historyChat.value == null || historyChat.value === '') {
+    if (!historyChat.value) {
 
-      historyChat.value = response.data._id
+      historyChat.value = response.data.history
 
       await axios.put(`${urlServer}/update-message-history`, {
         id: _id,
@@ -208,34 +187,28 @@ const sendMessage = async () => {
       loadHistoryChat()
     }
 
-    nextTick(() => {
-      chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
-    })
+    await nextTick()
+    chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
 
     nextTick(() => {
       textareaRef.value?.focus()
     })
   } catch (error) {
-    toast.error('Lỗi khi gửi tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Lỗi khi gửi tin nhắn!')
     const typingIndex = messages.value.findIndex(
       (msg) => msg.sender === 'bot' && msg.content === 'Đang trả lời...'
     )
     if (typingIndex !== -1) {
-      messages.value.splice(typingIndex, 1);
+      messages.value.splice(typingIndex, 1)
     }
     // Thêm câu trả lời lỗi
     messages.value.push({
       sender: 'bot',
       content: 'Bạn hãy gõ lại câu hỏi rõ ràng hơn.',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     })
-    isTyping.value = false // 👈 Bắt đầu gõ
   } finally {
-    isBotTyping.value = false
-    isTyping.value = false // 👈 Bắt đầu gõ
+    isTyping.value = false
   }
 
 }
@@ -257,34 +230,39 @@ const downloadImage = async (imageUrl: string) => {
     link.click();
     window.URL.revokeObjectURL(blobUrl);
   } catch (err) {
-    toast.error('Tải ảnh thất bại!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Tải ảnh thất bại!')
   }
-};
+}
+
+const validateAttachment = (file: File) => {
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    showToastError('Dung lượng file không được quá 20MB.', TOAST_LONG_DURATION)
+    return false
+  }
+
+  if (!SUPPORTED_ATTACHMENT_TYPES.has(file.type)) {
+    showToastError('Định dạng file không được hỗ trợ.', TOAST_LONG_DURATION)
+    return false
+  }
+
+  return true
+}
 
 const handlePaste = (event: ClipboardEvent) => {
-  // Kiểm tra điều kiện nếu botIdSelect === botImage thì ngừng sự kiện paste
+  const items = event.clipboardData?.items
+  if (!items) return
 
-  // Kiểm tra clipboard có dữ liệu hay không
-  const items = event.clipboardData?.items;
-  if (!items) return;
-
-  // Kiểm tra tất cả các items trong clipboard
   for (const item of items) {
-    if (item.kind === 'file') {
-      const file = item.getAsFile();
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          // Lưu thông tin preview file vào các biến ref
-          previewFile.value = file;
-          previewUrl.value = e.target?.result as string; // Lưu preview URL
-        };
-        reader.readAsDataURL(file); // Convert file thành base64 để preview
-      }
-    }
+    if (item.kind !== 'file') continue
+
+    const file = item.getAsFile()
+    if (!file) continue
+    if (!validateAttachment(file)) continue
+
+  clearPreview()
+  previewFile.value = file
+  previewUrl.value = (window.URL as any).createObjectURL(file)
+    break
   }
 }
 
@@ -292,40 +270,28 @@ const handleFileUpload = (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
 
-  const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
-  const documentTypes = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-  if (file.size > 20 * 1024 * 1024) {
-    toast.error('Dung lượng file không được quá 20MB.', {
-      position: 'top',
-      duration: 8000
-    })
+  if (!validateAttachment(file)) {
+    (e.target as HTMLInputElement).value = ''
     return
   }
-  else if (documentTypes.includes(file.type) || imageTypes.includes(file.type)) {
-    previewFile.value = file;
-    previewUrl.value = URL.createObjectURL(file);
-  }
-  else {
-    toast.error('Định dạng file không được hỗ trợ.', {
-      position: 'top',
-      duration: 8000
-    })
-  }
+  clearPreview()
+  previewFile.value = file
+  previewUrl.value = (window.URL as any).createObjectURL(file)
   (e.target as HTMLInputElement).value = ''
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
+    if (isTyping.value) {
+      showToastError('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút')
+      return
+    }
     sendMessage()
   }
   // Shift + Enter thì không làm gì để textarea tự xuống dòng
 }
 
-const handleDoubleClick = (event: MouseEvent) => {
-  const textarea = event.target as HTMLTextAreaElement
-  textarea.select()
-}
 </script>
 
 <template>
@@ -433,7 +399,7 @@ const handleDoubleClick = (event: MouseEvent) => {
           <!-- Input + buttons -->
           <div class="flex w-full items-center">
             <!-- Input -->
-            <textarea v-model="newMessage" @input="autoResize" @keydown.enter="sendMessage" @paste="handlePaste"
+            <textarea v-model="newMessage" @input="autoResize" @keydown="handleKeydown" @paste="handlePaste"
               placeholder="Xin mời nhập câu hỏi..."
               class="input-chat w-full border-none focus-within:ring-0 px-0 focus-visible:outline-none resize-none overflow-hidden"
               maxlength="1000" rows="1" ref="textareaRef"

@@ -2,7 +2,6 @@
 import '../assets/mainhome.css'
 import { ref } from 'vue';
 import { useHead } from '@vueuse/head'
-import ZaloHelper from './ZaloHelper.vue';
 
 
 useHead({

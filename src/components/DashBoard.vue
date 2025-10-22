@@ -9,7 +9,6 @@ import QRCode from 'qrcode'
 import { eventBus } from '../stores/eventBus';
 import { useHistoryChat } from '@/composables/useHistoryChat'
 import { useListBot } from '@/composables/useListBot';
-import ZaloHelper from './ZaloHelper.vue';
 
 
 interface User {

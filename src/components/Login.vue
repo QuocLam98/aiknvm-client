@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import '../assets/login.css';
 import { useToast } from 'vue-toast-notification';
-import ZaloHelper from './ZaloHelper.vue';
 
 const toast = useToast()
 const email = ref('');

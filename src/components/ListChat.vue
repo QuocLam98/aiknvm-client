@@ -26,7 +26,25 @@ interface Message {
   models: string,
 }
 
+const TOAST_DEFAULT_DURATION = 3000
+const getDialog = (id: string) => document.getElementById(id) as HTMLDialogElement | null
+const openDialog = (id: string) => getDialog(id)?.showModal()
+const closeDialog = (id: string) => getDialog(id)?.close()
+
 const toast = useToast()
+const showToastError = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.error(message, {
+    position: 'top',
+    duration
+  })
+}
+
+const showToastSuccess = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.success(message, {
+    position: 'top',
+    duration
+  })
+}
 // State
 const messages = ref<Message[]>([])
 const searchTerm = ref('')
@@ -44,10 +62,14 @@ const messageDetail = reactive({
 
 const getChatDetail = (id: string) => {
   const messageGet = messages.value.find(e => e._id === id)
-  getChat(messageGet)
-  const modal: any = document.getElementById('modal_message_detail')
-  if (modal?.showModal) modal.showModal()
 
+  if (!messageGet) {
+    showToastError('Không tìm thấy tin nhắn!')
+    return
+  }
+
+  getChat(messageGet)
+  openDialog('modal_message_detail')
 }
 
 const getChat = (data: any) => {
@@ -60,8 +82,7 @@ const closeModal = () => {
   messageDetail.contentUser = ''
   messageDetail.contentBot = ''
 
-  const modal: any = document.getElementById('modal_message_detail')
-  if (modal?.close) modal.close()
+  closeDialog('modal_message_detail')
 }
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr)
@@ -92,6 +113,7 @@ const fetchChats = async () => {
     totalItems.value = response.data.total
   } catch (error) {
     console.error('Lỗi khi lấy dữ liệu:', error)
+    showToastError('Lỗi khi lấy danh sách tin nhắn!')
   } finally {
     loading.value = false
   }
@@ -102,14 +124,10 @@ const debouncedFetch = debounce(() => {
   fetchChats()
 }, 500)
 
-watch([searchTerm], debouncedFetch)
+watch(searchTerm, debouncedFetch)
 watch([currentPage, perPage], fetchChats)
 
 onMounted(fetchChats)
-
-const changePerPage = () => {
-  currentPage.value = 1
-}
 
 const confirmDelete = async (id: string) => {
   const confirmed = confirm('Bạn có chắc chắn muốn xóa người dùng này không?')
@@ -118,19 +136,13 @@ const confirmDelete = async (id: string) => {
   try {
     await axios.put(`${urlServer}/delete-bot/${id}`)
     messages.value = messages.value.filter(bot => bot._id !== id)
-    toast.success('Xóa thành công tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    });
+    showToastSuccess('Xóa thành công tin nhắn!')
     if (messages.value.length === 1 && currentPage.value > 1) {
       currentPage.value--
     }
     await fetchChats()
   } catch (error) {
-    toast.error('Lỗi xóa bot thất bại!', {
-      position: 'top',
-      duration: 3000
-    });
+    showToastError('Lỗi xóa bot thất bại!')
   }
 }
 </script>

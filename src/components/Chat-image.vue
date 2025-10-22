@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import axios from 'axios'
-import { useToast } from 'vue-toast-notification';
+import { useToast } from 'vue-toast-notification'
 import { useHistoryChat } from '@/composables/useHistoryChat'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -31,7 +31,7 @@ const onImageLoad = () => {
 const route = useRoute()
 const router = useRouter()
 const code = ref<string>('')
-const isTyping = ref(false) // 👈 Bắt đầu gõ
+const isTyping = ref(false)
 const { loadHistoryChat } = useHistoryChat()
 const historyChat = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -41,44 +41,29 @@ const chatContainer = ref<HTMLElement | null>(null)
 const previewFile = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)
 const newMessage = ref('')
-const isBotTyping = ref(false);  // Trạng thái đang trả lời
 const urlServer = import.meta.env.VITE_URL_SERVER
 const botImage = ref('')
 const getBotData = ref<Bot>()
 
-const renderMarkdown = async (markdown: string) => {
-  const { unified } = await import('unified')
-  const remarkParse = (await import('remark-parse')).default
-  const rehypeStringify = (await import('rehype-stringify')).default
-  const remarkRehype = (await import('remark-rehype')).default
-  const rehypeHighlight = (await import('rehype-highlight')).default
-  const { hlLanguages } = await import('@/utils/hl-languages')
-
-  const file = await unified()
-    .use(remarkParse)
-    .use(remarkRehype)
-  .use(rehypeHighlight, { languages: hlLanguages as any })
-    .use(rehypeStringify)
-    .process(markdown)
-
-  return String(file)
+const TOAST_DEFAULT_DURATION = 3000
+const showToastError = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.error(message, {
+    position: 'top',
+    duration
+  })
 }
 
 const clearPreview = () => {
-  previewUrl.value = ''
+  previewUrl.value = null
   previewFile.value = null
 }
 
 const getBot = async () => {
   try {
-    const res = await axios.get(`${urlServer}/get-bot/` + botImage.value);
-    getBotData.value = res.data  // <-- đây
-  }
-  catch {
-    toast.error('Lỗi khi lấy thông tin bot!', {
-      position: 'top',
-      duration: 3000
-    });
+    const res = await axios.get(`${urlServer}/get-bot/${botImage.value}`)
+    getBotData.value = res.data
+  } catch {
+    showToastError('Lỗi khi lấy thông tin bot!')
   }
 }
 
@@ -116,87 +101,72 @@ const openImage = (url: string) => {
   window.open(url, '_blank');
 }
 
+const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+  chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior })
+}
+
 const sendMessage = async () => {
-  const formData = new FormData()
   const content = newMessage.value.trim()
-  const token = localStorage.getItem('token')
-  
+  const token = localStorage.getItem('token') ?? ''
+
   if (!content) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
-    return
-  }
-  else if (previewFile.value && !content) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Yêu cầu nhập nội dung tin nhắn!')
     return
   }
 
+  const formData = new FormData()
   formData.append('bot', botImage.value)
-  formData.append('token', token || '')
-  if (content) formData.append('content', content)
+  formData.append('token', token)
+  formData.append('content', content)
   if (historyChat.value) {
     formData.append('historyChat', historyChat.value)
   }
 
-  isTyping.value = true // 👈 Bắt đầu gõ
+  isTyping.value = true
   messages.value.push({
     sender: 'user',
-    content: content,
-    fileUser: previewUrl.value ? previewUrl.value : '',
+    content,
+    fileUser: previewUrl.value ?? '',
     createdAt: new Date().toISOString()
   })
-  nextTick(() => {
-    chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
-  })
+
+  await nextTick()
+  scrollToBottom()
+
   newMessage.value = ''
-  previewUrl.value = null
-  isBotTyping.value = true
-  nextTick(() => {
-    autoResize()
-  })
+  clearPreview()
+  autoResize()
+
   messages.value.push({
     sender: 'bot',
     content: 'Đang trả lời...',
     createdAt: new Date().toISOString()
   })
 
-  previewFile.value = null
-
   try {
     const response = await axios.post(`${urlServer}/create-message-image`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    if (response.data.status === 400)
-    {
+    if (response.data.status === 400) {
       router.push('/login')
       localStorage.clear()
       return
     }
 
-    previewFile.value = null
-    previewUrl.value = null
     messages.value.pop()
-    const { contentBot, createdAt, history, _id } = response.data // Lấy thêm imageUrl từ response
+    const { contentBot, createdAt, history, _id } = response.data
 
-    // Kiểm tra xem contentBot có phải là một URL không
     messages.value.push({
       sender: 'bot',
       content: contentBot,
-      imageUrl: isValidUrl(contentBot) ? contentBot : null,
+      imageUrl: isValidUrl(contentBot) ? contentBot : undefined,
       createdAt,
-      history: history,
-      _id: _id
+      history,
+      _id
     })
 
-
-    if (historyChat.value == null || historyChat.value === '') {
-
+    if (!historyChat.value) {
       historyChat.value = response.data._id
 
       await axios.put(`${urlServer}/update-message-history`, {
@@ -207,36 +177,30 @@ const sendMessage = async () => {
       loadHistoryChat()
     }
 
-    nextTick(() => {
-      chatContainer.value?.scrollTo({ top: chatContainer.value.scrollHeight, behavior: 'smooth' })
-    })
+    await nextTick()
+    scrollToBottom()
 
     nextTick(() => {
       textareaRef.value?.focus()
     })
   } catch (error) {
-    toast.error('Lỗi khi gửi tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Lỗi khi gửi tin nhắn!')
+
     const typingIndex = messages.value.findIndex(
       (msg) => msg.sender === 'bot' && msg.content === 'Đang trả lời...'
     )
     if (typingIndex !== -1) {
-      messages.value.splice(typingIndex, 1);
+      messages.value.splice(typingIndex, 1)
     }
-    // Thêm câu trả lời lỗi
+
     messages.value.push({
       sender: 'bot',
       content: 'Bạn hãy gõ lại câu hỏi rõ ràng hơn.',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     })
-    isTyping.value = false // 👈 Bắt đầu gõ
   } finally {
-    isBotTyping.value = false
-    isTyping.value = false // 👈 Bắt đầu gõ
+    isTyping.value = false
   }
-
 }
 
 const downloadImage = async (imageUrl: string) => {
@@ -256,10 +220,7 @@ const downloadImage = async (imageUrl: string) => {
     link.click();
     window.URL.revokeObjectURL(blobUrl);
   } catch (err) {
-    toast.error('Tải ảnh thất bại!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Tải ảnh thất bại!')
   }
 }
 
@@ -290,14 +251,12 @@ const handlePaste = (event: ClipboardEvent) => {
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
+    if (isTyping.value) {
+      showToastError('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút')
+      return
+    }
     sendMessage()
   }
-  // Shift + Enter thì không làm gì để textarea tự xuống dòng
-}
-
-const handleDoubleClick = (event: MouseEvent) => {
-  const textarea = event.target as HTMLTextAreaElement
-  textarea.select()
 }
 </script>
 
@@ -406,7 +365,7 @@ const handleDoubleClick = (event: MouseEvent) => {
           <!-- Input + buttons -->
           <div class="flex w-full items-center">
             <!-- Input -->
-            <textarea v-model="newMessage" @input="autoResize" @keydown.enter="sendMessage" @paste="handlePaste"
+            <textarea v-model="newMessage" @input="autoResize" @keydown="handleKeydown" @paste="handlePaste"
               placeholder="Xin mời nhập câu hỏi..."
               class="input-chat w-full border-none focus-within:ring-0 px-0 focus-visible:outline-none resize-none overflow-hidden"
               maxlength="1000" rows="1" ref="textareaRef"

@@ -31,6 +31,19 @@ interface ChatMessage {
   voice?: string
 }
 
+const TOAST_DEFAULT_DURATION = 3000
+const TOAST_LONG_DURATION = 8000
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024
+const FILE_UPLOAD_DELAY_MS = 5000
+const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
+const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'text/plain',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+const SUPPORTED_ATTACHMENT_TYPES = new Set([...IMAGE_MIME_TYPES, ...DOCUMENT_MIME_TYPES])
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 const isUploading = ref(false)
 const router = useRouter()
 const isPlaying = ref(false)
@@ -40,6 +53,12 @@ const isTyping = ref(false) // 👈 Bắt đầu gõ
 const { loadHistoryChat } = useHistoryChat()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const toast = useToast()
+const showToastError = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.error(message, {
+    position: 'top',
+    duration
+  })
+}
 const messages = ref<ChatMessage[]>([])
 const chatContainer = ref<HTMLElement | null>(null)
 const previewFile = ref('')
@@ -53,7 +72,8 @@ const urlServer = import.meta.env.VITE_URL_SERVER
 const historyChat = ref('')
 // Chọn model (nhanh = gemini-2.5-flash (mặc định), Suy nghĩ = gemini-2.5-pro)
 const selectedModel = ref<string>('gemini-2.5-flash')
-const api = ref('')
+const isGptModel = computed(() => ['gpt-5', 'gpt-5-mini'].includes(selectedModel.value))
+const hasAttachment = computed(() => Boolean(previewFile.value))
 
 const GEMINI_MODELS = [
   { value: 'gemini-2.5-flash', label: 'Gemini Flash' },
@@ -111,6 +131,7 @@ const renderMarkdown = async (markdown: string) => {
 const clearPreview = () => {
   previewUrl.value = ''
   previewFile.value = ''
+  previewFileType.value = ''
 }
 
 const autoResize = () => {
@@ -133,10 +154,7 @@ const getBot = async () => {
     // await fetchMessages()
   }
   catch {
-    toast.error('Lỗi khi lấy thông tin bot!', {
-      position: 'top',
-      duration: 3000
-    });
+    showToastError('Lỗi khi lấy thông tin bot!')
   }
 }
 
@@ -161,7 +179,7 @@ const typeWriterEffect = async (message: ChatMessage, plainText: string) => {
       await nextTick()
       scrollToBottomInstant()
 
-      await new Promise(resolve => setTimeout(resolve, 300)) // delay nhẹ
+  await wait(300) // delay nhẹ
 
       const rendered = await renderMarkdown(plainText)
       message.displayContent = rendered
@@ -179,25 +197,22 @@ const typeWriterEffect = async (message: ChatMessage, plainText: string) => {
 
 const sendMessage = async () => {
   const content = newMessage.value.trim()
-  const token = localStorage.getItem('token')
-  if (!content && !previewFile.value) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+  const token = localStorage.getItem('token') ?? ''
+
+  if (!content && !hasAttachment.value) {
+    showToastError('Yêu cầu nhập nội dung tin nhắn!')
     return
   }
-  else if (previewFile.value && !content) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+
+  if (hasAttachment.value && !content) {
+    showToastError('Yêu cầu nhập nội dung tin nhắn!')
     return
   }
+
   const formData = new FormData()
   formData.append('token', token || '')
   if (content) formData.append('content', content)
-  if (previewFile.value) {
+  if (hasAttachment.value) {
     formData.append('file', previewFile.value)
     formData.append('fileType', previewFileType.value)
   }
@@ -227,6 +242,7 @@ const sendMessage = async () => {
   isBotTyping.value = true
   previewFile.value = ''
   previewUrl.value = null
+  previewFileType.value = ''
   messages.value.push({
     sender: 'bot',
     content: 'Đang trả lời...',
@@ -240,12 +256,11 @@ const sendMessage = async () => {
   })
 
   try {
-    if (selectedModel.value === 'gpt-5' || selectedModel.value === 'gpt-5-mini') {
-      api.value = `${urlServer}/create-message`
-    } else {
-      api.value = `${urlServer}/create-message-gemini`
-    }
-    const response = await axios.post(api.value, formData, {
+    const endpoint = isGptModel.value
+      ? `${urlServer}/create-message`
+      : `${urlServer}/create-message-gemini`
+
+    const response = await axios.post(endpoint, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -293,10 +308,7 @@ const sendMessage = async () => {
       textareaRef.value?.focus()
     })
   } catch (error) {
-    toast.error('Lỗi khi gửi tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Lỗi khi gửi tin nhắn!')
 
     const typingIndex = messages.value.findIndex(
       (msg) => msg.sender === 'bot' && msg.content === 'Đang trả lời...'
@@ -328,56 +340,62 @@ const sendMessage = async () => {
   }
 }
 
+interface UploadOptions {
+  delay?: number
+  markTyping?: boolean
+}
+
+const validateAttachment = (file: File): boolean => {
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    showToastError('Dung lượng file không được quá 20MB.', TOAST_LONG_DURATION)
+    return false
+  }
+
+  if (!SUPPORTED_ATTACHMENT_TYPES.has(file.type)) {
+    showToastError('Định dạng file không được hỗ trợ.', TOAST_LONG_DURATION)
+    return false
+  }
+
+  return true
+}
+
+const uploadAttachment = async (file: File, options: UploadOptions = {}) => {
+  const { delay = 0, markTyping = false } = options
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    if (markTyping) isTyping.value = true
+    isUploading.value = true
+
+    const response = await axios.post(`${urlServer}/upload-file-chat`, formData)
+    previewUrl.value = response.data
+    previewFile.value = response.data
+    previewFileType.value = file.type
+
+    if (delay) await wait(delay)
+  } catch (error) {
+    showToastError('Tải file lên thất bại.', TOAST_LONG_DURATION)
+    throw error
+  } finally {
+    isUploading.value = false
+    if (markTyping) isTyping.value = false
+  }
+}
 
 const handleFileUpload = async (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
 
-  const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
-  const documentTypes = [
-    'application/pdf',
-    'text/plain',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ]
-
-  if (file.size > 20 * 1024 * 1024) {
-    toast.error('Dung lượng file không được quá 20MB.', {
-      position: 'top',
-      duration: 8000
-    })
+  if (!validateAttachment(file)) {
+    (e.target as HTMLInputElement).value = ''
     return
   }
 
-  if (documentTypes.includes(file.type) || imageTypes.includes(file.type)) {
-
-    const formData = new FormData()
-    formData.append('file', file || '')
-
-    try {
-      isUploading.value = true
-      isTyping.value = true
-
-      const response = await axios.post(`${urlServer}/upload-file-chat`, formData)
-      previewUrl.value = response.data
-      previewFile.value = response.data
-      previewFileType.value = file.type
-
-      // ✅ Delay 5s chỉ khi thành công
-      await new Promise(resolve => setTimeout(resolve, 5000))
-    } catch (error) {
-      toast.error('Tải file lên thất bại.', {
-        position: 'top',
-        duration: 8000
-      })
-    } finally {
-      isUploading.value = false
-      isTyping.value = false
-    }
-  } else {
-    toast.error('Định dạng file không được hỗ trợ.', {
-      position: 'top',
-      duration: 8000
-    })
+  try {
+    await uploadAttachment(file, { delay: FILE_UPLOAD_DELAY_MS, markTyping: true })
+  } catch {
+    clearPreview()
   }
 
   (e.target as HTMLInputElement).value = ''
@@ -388,28 +406,19 @@ const handlePaste = async (event: ClipboardEvent) => {
   if (!items) return;
 
   for (const item of items) {
-    if (item.kind === 'file') {
-      const file = item.getAsFile();
-      if (file) {
-        const formData = new FormData()
-        formData.append('file', file || '')
-        // Nếu có file, cập nhật previewFile
-        try {
-          isUploading.value = true
-          const response = await axios.post(`${urlServer}/upload-file-chat`, formData)
-          previewUrl.value = response.data
-          previewFile.value = response.data
-          previewFileType.value = file.type
-        } catch (error) {
-          toast.error('Tải file lên thất bại.', {
-            position: 'top',
-            duration: 8000
-          })
-        } finally {
-          isUploading.value = false
-        }
-      }
+    if (item.kind !== 'file') continue
+
+    const file = item.getAsFile()
+    if (!file) continue
+    if (!validateAttachment(file)) continue
+
+    try {
+      await uploadAttachment(file)
+    } catch {
+      clearPreview()
     }
+
+    break
   }
 }
 
@@ -465,10 +474,7 @@ const copyMessage = (message: ChatMessage) => {
       }, 2000);
     })
     .catch(() => {
-      toast.error('Không thể sao chép tin nhắn!', {
-        position: 'top',
-        duration: 3000
-      });
+      showToastError('Không thể sao chép tin nhắn!')
     });
 }
 
@@ -484,6 +490,7 @@ const handleLikeDislike = async (message: ChatMessage, status: number) => {
     // Gán lại status cho tin nhắn để giao diện tự cập nhật
     message.status = status
   } catch (err) {
+    showToastError('Không thể cập nhật đánh giá!')
   } finally {
     message._loading = false
   }
@@ -500,10 +507,7 @@ const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     if (isTyping.value === true) {
-      toast.error('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút', {
-        position: 'top',
-        duration: 3000
-      })
+      showToastError('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút')
       return
     }
     sendMessage()
@@ -541,10 +545,7 @@ const handlePlay = async (message: ChatMessage) => {
         id: message._id
       })// Giả định hàm này trả về string
       if (voiceUrl.data.status === 404) {
-        toast.error(voiceUrl.data.message, {
-          position: 'top',
-          duration: 8000
-        })
+        showToastError(voiceUrl.data.message, TOAST_LONG_DURATION)
       }
       else {
         const target = messages.value.find(e => e._id === message._id)
@@ -555,10 +556,7 @@ const handlePlay = async (message: ChatMessage) => {
       }
 
     } catch (err) {
-      toast.error('Lỗi khi tạo âm thanh', {
-        position: 'top',
-        duration: 8000
-      })
+      showToastError('Lỗi khi tạo âm thanh', TOAST_LONG_DURATION)
     } finally {
       isLoadingVoice.value = false
     }
@@ -579,10 +577,7 @@ const playVoice = (url: string) => {
       isPlaying.value = false
     })
   }).catch(err => {
-    toast.error('Không thể phát âm thanh', {
-      position: 'top',
-      duration: 8000
-    })
+    showToastError('Không thể phát âm thanh', TOAST_LONG_DURATION)
     isPlaying.value = false
   })
 }

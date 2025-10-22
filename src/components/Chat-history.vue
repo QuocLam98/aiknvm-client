@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import axios from 'axios'
-import { useToast } from 'vue-toast-notification';
+import { useToast } from 'vue-toast-notification'
 import { useRoute, useRouter } from 'vue-router'
 import { useVoice } from '@/composables/useVoice'
 
 interface Bot {
-  _id: string,
-  name: string,
-  description: string,
-  template: string,
-  image?: string,
-  status: number,
+  _id: string
+  name: string
+  description: string
+  template: string
+  image?: string
+  status: number
   models?: string
 }
 
@@ -19,19 +19,44 @@ interface ChatMessage {
   sender: 'user' | 'bot'
   content: string
   createdAt: string
-  fileUser?: string,
+  fileUser?: string
   status: number
-  _loading?: boolean // dùng nội bộ để hiển thị đang xử lý,
-  _id: string,
-  isCopied?: boolean,
-  displayContent?: string,
-  isDone: boolean,
-  voice?: string,
-  fileType?: string,
+  _loading?: boolean
+  _id: string
+  isCopied?: boolean
+  displayContent?: string
+  isDone: boolean
+  voice?: string
+  fileType?: string
 }
-const isUploading = ref(false)
+
+const TOAST_DEFAULT_DURATION = 3000
+const TOAST_LONG_DURATION = 8000
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024
+const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
+const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'text/plain',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+const SUPPORTED_ATTACHMENT_TYPES = new Set([...IMAGE_MIME_TYPES, ...DOCUMENT_MIME_TYPES])
+
+const toast = useToast()
+const showToastError = (message: string, duration = TOAST_DEFAULT_DURATION) => {
+  toast.error(message, {
+    position: 'top',
+    duration
+  })
+}
+
+const route = useRoute()
 const router = useRouter()
-// Voice composable
+const urlServer = import.meta.env.VITE_URL_SERVER
+
+const isUploading = ref(false)
+const isTyping = ref(false)
+const isBotTyping = ref(false)
+
 const {
   isPlaying,
   isLoadingVoice,
@@ -41,45 +66,37 @@ const {
   playVoice,
   stopVoice
 } = useVoice()
-const isTyping = ref(false)
-const route = useRoute()
-const code = ref<string>('')
+
+const code = ref('')
 const getBotId = ref('')
 const historyId = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const toast = useToast()
 const messages = ref<ChatMessage[]>([])
 const chatContainer = ref<HTMLElement | null>(null)
 const previewFile = ref('')
 const previewFileType = ref('')
 const previewUrl = ref<string | null>(null)
 const getBotData = ref<Bot>()
-const page = ref(1)
-const limit = 20
-const hasMore = ref(true)
-const loading = ref(false)
 const newMessage = ref('')
-const isBotTyping = ref(false);  // Trạng thái đang trả lời
-const urlServer = import.meta.env.VITE_URL_SERVER
-// Chọn model (Nhanh = gemini-2.5-flash (mặc định), Suy nghĩ = gemini-2.5-pro)
-const selectedModel = ref<string>('gemini-2.5-flash')
-// Determine voice support
-const isVoiceBot = computed(() => isVoiceBotComposable(getBotData.value?._id))
+const loading = ref(false)
+const hasMore = ref(true)
+const limit = 20
 const api = ref('')
+const selectedModel = ref<string>('gemini-2.5-flash')
 
 const GEMINI_MODELS = [
   { value: 'gemini-2.5-flash', label: 'Gemini Flash' },
-  { value: 'gemini-2.5-pro', label: 'Gemini Pro' },
+  { value: 'gemini-2.5-pro', label: 'Gemini Pro' }
 ]
 
 const GPT_MODELS = [
   { value: 'gpt-5', label: 'GPT-5' },
-  { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+  { value: 'gpt-5-mini', label: 'GPT-5 mini' }
 ]
 
 const availableModels = computed(() => {
-  const type = getBotData.value?.models
-  switch (type) {
+  const modelType = getBotData.value?.models
+  switch (modelType) {
     case '1':
       return GEMINI_MODELS
     case '2':
@@ -91,16 +108,19 @@ const availableModels = computed(() => {
   }
 })
 
+const isVoiceBot = computed(() => isVoiceBotComposable(getBotData.value?._id))
+
 watch(availableModels, (options) => {
   if (!options.length) {
     selectedModel.value = ''
     return
   }
-  const currentExists = options.some(option => option.value === selectedModel.value)
-  if (!currentExists) {
+  if (!options.some(option => option.value === selectedModel.value)) {
     selectedModel.value = options[0].value
   }
 }, { immediate: true })
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 const renderMarkdown = async (markdown: string) => {
   const { unified } = await import('unified')
@@ -113,7 +133,7 @@ const renderMarkdown = async (markdown: string) => {
   const file = await unified()
     .use(remarkParse)
     .use(remarkRehype)
-  .use(rehypeHighlight, { languages: hlLanguages as any })
+    .use(rehypeHighlight, { languages: hlLanguages as any })
     .use(rehypeStringify)
     .process(markdown)
 
@@ -121,32 +141,86 @@ const renderMarkdown = async (markdown: string) => {
 }
 
 const clearPreview = () => {
-  previewUrl.value = ''
+  previewUrl.value = null
   previewFile.value = ''
+  previewFileType.value = ''
 }
 
 const autoResize = () => {
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
+  if (!textareaRef.value) return
 
-    const scrollHeight = textareaRef.value.scrollHeight
-    const maxHeight = parseFloat(getComputedStyle(textareaRef.value).lineHeight) * 10
+  textareaRef.value.style.height = 'auto'
 
-    textareaRef.value.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
-    textareaRef.value.style.height = Math.min(scrollHeight, maxHeight) + 'px'
-  }
+  const scrollHeight = textareaRef.value.scrollHeight
+  const maxHeight = parseFloat(getComputedStyle(textareaRef.value).lineHeight) * 10
+
+  textareaRef.value.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden'
+  textareaRef.value.style.height = Math.min(scrollHeight, maxHeight) + 'px'
 }
 
 const getBot = async (id: string) => {
+  if (!id) return
   try {
-    const res = await axios.get(`${urlServer}/get-bot/` + id);
-    getBotData.value = res.data  // <-- đây
+    const res = await axios.get(`${urlServer}/get-bot/${id}`)
+    getBotData.value = res.data
+  } catch {
+    showToastError('Lỗi khi lấy thông tin bot!')
   }
-  catch {
-    toast.error('Lỗi khi lấy thông tin bot!', {
-      position: 'top',
-      duration: 3000
-    });
+}
+
+const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+  chatContainer.value?.scrollTo({
+    top: chatContainer.value.scrollHeight,
+    behavior
+  })
+}
+
+const scrollToBottomInstant = () => {
+  if (chatContainer.value) {
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+  }
+}
+
+const validateAttachment = (file: File) => {
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    showToastError('Dung lượng file không được quá 20MB.', TOAST_LONG_DURATION)
+    return false
+  }
+
+  if (!SUPPORTED_ATTACHMENT_TYPES.has(file.type)) {
+    showToastError('Định dạng file không được hỗ trợ.', TOAST_LONG_DURATION)
+    return false
+  }
+
+  return true
+}
+
+const uploadFileToServer = async (file: File, waitForProcessing = false) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    isUploading.value = true
+    isTyping.value = true
+
+    const response = await axios.post(`${urlServer}/upload-file-chat`, formData)
+    const filePath = response.data
+
+    previewUrl.value = filePath
+    previewFile.value = filePath
+    previewFileType.value = file.type
+
+    if (waitForProcessing) {
+      await delay(5000)
+    }
+
+    return true
+  } catch (error) {
+    showToastError('Tải file lên thất bại.', TOAST_LONG_DURATION)
+    return false
+  } finally {
+    isUploading.value = false
+    isTyping.value = false
   }
 }
 
@@ -171,7 +245,7 @@ const typeWriterEffect = async (message: ChatMessage, plainText: string) => {
       await nextTick()
       scrollToBottomInstant()
 
-      await new Promise(resolve => setTimeout(resolve, 300)) // delay nhẹ
+      await delay(300)
 
       const rendered = await renderMarkdown(plainText)
       message.displayContent = rendered
@@ -189,23 +263,20 @@ const typeWriterEffect = async (message: ChatMessage, plainText: string) => {
 
 const sendMessage = async () => {
   const content = newMessage.value.trim()
-  const token = localStorage.getItem('token')
-    if (!content && !previewFile.value) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+  const token = localStorage.getItem('token') ?? ''
+
+  if (!content && !previewFile.value) {
+    showToastError('Yêu cầu nhập nội dung tin nhắn!')
     return
   }
-  else if (previewFile.value && !content) {
-    toast.error('Yêu cầu nhập nội dung tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+
+  if (previewFile.value && !content) {
+    showToastError('Yêu cầu nhập nội dung tin nhắn!')
     return
   }
+
   const formData = new FormData()
-  formData.append('token', token || '')
+  formData.append('token', token)
   if (content) formData.append('content', content)
   if (previewFile.value) {
     formData.append('file', previewFile.value)
@@ -213,28 +284,31 @@ const sendMessage = async () => {
   }
   formData.append('bot', getBotId.value || '')
   formData.append('historyChat', historyId.value || '')
-  // Gửi model người dùng chọn
   formData.append('model', selectedModel.value)
-  // User message
-  isTyping.value = true // 👈 Bắt đầu gõ
-  const renderedContentUser = await renderMarkdown(content);
+
+  isTyping.value = true
+  const renderedContentUser = await renderMarkdown(content)
+  const attachmentUrl = previewUrl.value ?? ''
+  const attachmentType = previewFileType.value
+
   messages.value.push({
     sender: 'user',
     content: renderedContentUser,
     displayContent: renderedContentUser,
-    fileUser: previewUrl.value ? previewUrl.value : '',
+    fileUser: attachmentUrl,
     createdAt: new Date().toISOString(),
     status: 0,
     _id: '',
     isDone: true,
-    fileType: previewFileType.value
+    fileType: attachmentType
   })
 
   await nextTick()
   scrollToBottom()
+
   newMessage.value = ''
-  previewFile.value = ''
-  previewUrl.value = null
+  clearPreview()
+
   isBotTyping.value = true
   messages.value.push({
     sender: 'bot',
@@ -244,65 +318,58 @@ const sendMessage = async () => {
     _id: '',
     isDone: false
   })
-  nextTick(() => {
-    autoResize()
-  })
+
   try {
-    if (selectedModel.value === 'gpt-5' || selectedModel.value === 'gpt-5-mini') {
-      api.value = `${urlServer}/create-message`
-    } else {
-      api.value = `${urlServer}/create-message-gemini`
-    }
+    api.value = selectedModel.value === 'gpt-5' || selectedModel.value === 'gpt-5-mini'
+      ? `${urlServer}/create-message`
+      : `${urlServer}/create-message-gemini`
+
     const response = await axios.post(api.value, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-    if (response.data.status === 400)
-    {
+
+    if (response.data.status === 400) {
       router.push('/login')
       localStorage.clear()
       return
     }
 
-    previewFile.value = ''
-    previewUrl.value = null
     messages.value.pop()
-
-    const { contentBot, createdAt, status, _id } = response.data
+    const { contentBot, createdAt, status, _id, voice } = response.data
     const renderedContent = await renderMarkdown(contentBot)
 
-    const message = ({
-      sender: 'bot' as 'bot', // 👈 ép kiểu "bot" cố định
+    const message = {
+      sender: 'bot' as const,
       content: renderedContent,
-      status: status,
-      _id: _id,
+      status,
+      _id,
       createdAt,
       isCopied: false,
       displayContent: '',
-      isDone: true
-    })
+      isDone: true,
+      voice
+    }
 
     messages.value.push(message)
 
     nextTick(() => {
-      typeWriterEffect(message, contentBot);
+      typeWriterEffect(message, contentBot)
     })
 
     nextTick(() => {
       textareaRef.value?.focus()
     })
   } catch (error) {
-    toast.error('Lỗi khi gửi tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
+    showToastError('Lỗi khi gửi tin nhắn!')
+
     const typingIndex = messages.value.findIndex(
       (msg) => msg.sender === 'bot' && msg.content === 'Đang trả lời...'
     )
 
     if (typingIndex !== -1) {
-      messages.value.splice(typingIndex, 1);
+      messages.value.splice(typingIndex, 1)
     }
-    // Thêm câu trả lời lỗi
+
     messages.value.push({
       sender: 'bot',
       content: 'Bạn hãy gõ lại câu hỏi rõ ràng hơn.',
@@ -311,124 +378,36 @@ const sendMessage = async () => {
       _id: '',
       isDone: false
     })
-    isTyping.value = false // 👈 Bắt đầu gõ
+    isTyping.value = false
   } finally {
     isBotTyping.value = false
   }
 }
 
-const handleFileUpload = async (e: Event) => {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-
-  const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
-  const documentTypes = [
-    'application/pdf',
-    'text/plain',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ]
-
-  if (file.size > 20 * 1024 * 1024) {
-    toast.error('Dung lượng file không được quá 20MB.', {
-      position: 'top',
-      duration: 8000
-    })
-    return
-  }
-
-  if (documentTypes.includes(file.type) || imageTypes.includes(file.type)) {
-
-    const formData = new FormData()
-    formData.append('file', file || '')
-
-    try {
-      isUploading.value = true
-      isTyping.value = true
-
-      const response = await axios.post(`${urlServer}/upload-file-chat`, formData)
-      previewUrl.value = response.data
-      previewFile.value = response.data
-      previewFileType.value = file.type
-
-      // ✅ Delay 5s chỉ khi thành công
-      await new Promise(resolve => setTimeout(resolve, 5000))
-    } catch (error) {
-      toast.error('Tải file lên thất bại.', {
-        position: 'top',
-        duration: 8000
-      })
-    } finally {
-      isUploading.value = false
-      isTyping.value = false
-    }
-  } else {
-    toast.error('Định dạng file không được hỗ trợ.', {
-      position: 'top',
-      duration: 8000
-    })
-  }
-
-  (e.target as HTMLInputElement).value = ''
-}
-
-const handlePaste = async (event: ClipboardEvent) => {
-  const items = event.clipboardData?.items;
-  if (!items) return;
-
-  for (const item of items) {
-    if (item.kind === 'file') {
-      const file = item.getAsFile();
-      if (file) {
-        const formData = new FormData()
-        formData.append('file', file || '')
-        // Nếu có file, cập nhật previewFile
-        try {
-          isUploading.value = true
-          const response = await axios.post(`${urlServer}/upload-file-chat`, formData)
-          previewUrl.value = response.data
-          previewFile.value = response.data
-          previewFileType.value = file.type
-        } catch (error) {
-          toast.error('Tải file lên thất bại.', {
-            position: 'top',
-            duration: 8000
-          })
-        } finally {
-          isUploading.value = false
-        }
-      }
-    }
-  }
-}
-
-const getFileType = (file: string | null): string => {
-  if (!file) return ''
-
-  if (file.startsWith('image/')) return 'image'
-  if (file === 'application/pdf') return 'pdf'
-  if (file === 'application/msword' || file === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'doc'
-  if (file === 'text/plain') return 'txt'
-  return ''
-}
-
 const fetchMessages = async (isLoadMore = false) => {
-  if (loading.value || !hasMore.value) return;
-  loading.value = true;
+  if (loading.value || !historyId.value) return
+
+  loading.value = true
 
   try {
-    const res = await axios.get(`${urlServer}/list-message-history/` + historyId.value)
+    const res = await axios.get(`${urlServer}/list-message-history/${historyId.value}`)
+    const rawMessages = Array.isArray(res.data) ? res.data : []
 
-    getBotId.value = res.data[0].bot
+    if (!rawMessages.length) {
+      messages.value = []
+      hasMore.value = false
+      return
+    }
 
+    getBotId.value = rawMessages[0].bot || ''
     await getBot(getBotId.value)
 
-    const rawMessages = res.data.reverse();
+    const orderedMessages = rawMessages.reverse()
+    const newMessages: ChatMessage[] = []
 
-    const newMessages: ChatMessage[] = [];
-
-    for (const msg of rawMessages) {
+    for (const msg of orderedMessages) {
       if (msg.contentUser) {
-        const renderedContentUser = await renderMarkdown(msg.contentUser);
+        const renderedContentUser = await renderMarkdown(msg.contentUser)
         newMessages.push({
           sender: 'user',
           content: renderedContentUser,
@@ -439,155 +418,128 @@ const fetchMessages = async (isLoadMore = false) => {
           status: 0,
           _id: '',
           isDone: true
-        });
+        })
       }
 
       if (msg.contentBot) {
-        const renderedContent = await renderMarkdown(msg.contentBot); // ✅ CHÍNH XÁC
+        const renderedContent = await renderMarkdown(msg.contentBot)
         newMessages.push({
           sender: 'bot',
           content: renderedContent,
-          displayContent: renderedContent, // 👈 THÊM DÒNG NÀY
+          displayContent: renderedContent,
           createdAt: msg.createdAt,
           status: msg.status,
           _id: msg._id,
           isCopied: false,
           isDone: true,
           voice: msg.voice
-        });
+        })
       }
     }
 
-    if (isLoadMore) {
-      messages.value = [...newMessages, ...messages.value];
-    } else {
-      messages.value = [...newMessages, ...messages.value];
-    }
+    messages.value = isLoadMore
+      ? [...newMessages, ...messages.value]
+      : newMessages
 
     if (newMessages.length < limit) {
-      hasMore.value = false;
+      hasMore.value = false
     }
-    await nextTick();
-    scrollToBottomInstant();
-  } catch (error) {
-    toast.error('Lỗi khi gửi tin nhắn!', {
-      position: 'top',
-      duration: 3000
-    })
-
-    const typingIndex = messages.value.findIndex(
-      (msg) => msg.sender === 'bot' && msg.content === 'Đang trả lời...'
-    )
-    if (typingIndex !== -1) {
-      messages.value.splice(typingIndex, 1)
-    }
-
-    const fallbackMessage = 'Bạn hãy gõ lại câu hỏi rõ ràng hơn.' // 👈 Nội dung cố định
-
-    const errorBotMessage = {
-      sender: 'bot' as 'bot',
-      content: fallbackMessage,
-      displayContent: '',
-      createdAt: new Date().toISOString(),
-      status: 0,
-      _id: '',
-      isDone: false
-    }
-
-    messages.value.push(errorBotMessage)
 
     await nextTick()
-    typeWriterEffect(errorBotMessage, fallbackMessage)
-
-    isTyping.value = false
+    scrollToBottomInstant()
+  } catch (error) {
+    showToastError('Không thể tải lịch sử trò chuyện!')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
-const scrollToBottom = () => {
-  chatContainer.value?.scrollTo({
-    top: chatContainer.value.scrollHeight,
-    behavior: 'smooth'
-  })
+const handleFileUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  if (!validateAttachment(file)) {
+    (event.target as HTMLInputElement).value = ''
+    return
+  }
+
+  await uploadFileToServer(file, true)
+  ;(event.target as HTMLInputElement).value = ''
 }
 
-const scrollToBottomInstant = () => {
-  if (chatContainer.value) {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+const handlePaste = async (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items
+  if (!items) return
+
+  for (const item of items) {
+    if (item.kind !== 'file') continue
+    const file = item.getAsFile()
+    if (!file || !validateAttachment(file)) continue
+
+    await uploadFileToServer(file)
+    break
   }
 }
+
+watch(newMessage, () => {
+  autoResize()
+})
 
 watch(() => route.query.code, async (newCode) => {
-  if (typeof newCode === 'string') {
-    code.value = newCode
-    await nextTick();
+  if (typeof newCode !== 'string') return
 
-    // Cập nhật botIdSelect và reset các giá trị khác
-    historyId.value = code.value || ''
-    messages.value = []
-    hasMore.value = true
+  await nextTick()
 
-    // Reset preview file và URL
-    previewFile.value = ''
-    previewUrl.value = ''// Đặt previewUrl về chuỗi rỗng để ẩn nó
+  code.value = newCode || ''
+  historyId.value = code.value
+  messages.value = []
+  hasMore.value = true
+  clearPreview()
 
-
-    // Gọi lại autoResize để điều chỉnh lại kích thước của textarea
-    autoResize()
-    await fetchMessages()
-  }
+  await fetchMessages()
+  autoResize()
 }, { immediate: true })
 
-
 const openImage = (url: string) => {
-  window.open(url, '_blank');
+  window.open(url, '_blank')
 }
 
 const copyMessage = (message: ChatMessage) => {
-  const textToCopy = document.createElement('div');
-  textToCopy.innerHTML = message.content;
-  // Thay thế một số thẻ HTML bằng dấu xuống dòng
-  textToCopy.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-  textToCopy.querySelectorAll('p').forEach(p => p.replaceWith(`${p.textContent}\n`));
-  textToCopy.querySelectorAll('li').forEach(li => li.replaceWith(`- ${li.textContent}\n`));
+  const textContainer = document.createElement('div')
+  textContainer.innerHTML = message.content
+  textContainer.querySelectorAll('br').forEach(br => br.replaceWith('\n'))
+  textContainer.querySelectorAll('p').forEach(p => p.replaceWith(`${p.textContent}\n`))
+  textContainer.querySelectorAll('li').forEach(li => li.replaceWith(`- ${li.textContent}\n`))
 
-  const pureText = textToCopy.textContent || textToCopy.innerText || '';
+  const pureText = textContainer.textContent || textContainer.innerText || ''
 
   navigator.clipboard.writeText(pureText)
     .then(() => {
       messages.value = messages.value.map(msg => ({
         ...msg,
         isCopied: msg === message
-      }));
+      }))
       setTimeout(() => {
         messages.value = messages.value.map(msg => ({
           ...msg,
           isCopied: false
-        }));
-      }, 2000);
+        }))
+      }, 2000)
     })
     .catch(() => {
-      toast.error('Không thể sao chép tin nhắn!', {
-        position: 'top',
-        duration: 3000
-      });
-    });
+      showToastError('Không thể sao chép tin nhắn!')
+    })
 }
-
 
 const handleLikeDislike = async (message: ChatMessage, status: number) => {
   if (message.status !== 0 || message._loading) return
 
   message._loading = true
   try {
-    // Gọi API cập nhật trạng thái like/dislike
     await updateBotMessageStatus(message._id, status)
-
-    // Gán lại status cho tin nhắn để giao diện tự cập nhật
     message.status = status
-  } catch (err) {
-    console.error('Lỗi khi cập nhật like/dislike:', err)
+  } catch (error) {
+    showToastError('Lỗi khi cập nhật đánh giá!')
   } finally {
     message._loading = false
   }
@@ -595,25 +547,20 @@ const handleLikeDislike = async (message: ChatMessage, status: number) => {
 
 const updateBotMessageStatus = async (id: string, status: number) => {
   await axios.put(`${urlServer}/update-message`, {
-    id: id,
-    status: status
-  });
+    id,
+    status
+  })
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
-  if (isTyping.value === true)
-  {
-    toast.error('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút', {
-      position: 'top',
-      duration: 3000
-    })
-    return
-  }
+    if (isTyping.value) {
+      showToastError('Trợ lý đang trả lời câu hỏi của bạn, vui lòng chờ chút')
+      return
+    }
     sendMessage()
   }
-  // Shift + Enter thì không làm gì để textarea tự xuống dòng
 }
 
 const handleDoubleClick = (event: MouseEvent) => {
@@ -621,44 +568,51 @@ const handleDoubleClick = (event: MouseEvent) => {
   textarea.select()
 }
 
-const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '')
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '')
 
-async function handlePlay(message: ChatMessage) {
+const handlePlay = async (message: ChatMessage) => {
   try {
-    // Nếu đã có voice URL, chuyển sang phát ngay và bỏ qua tạo mới
     if (message.voice) {
       await playExistingVoice(message)
       return
     }
+
     await primePlayback()
     const url = await getOrCreateVoice(message._id, stripHtml(message.content), async (plain, id) => {
       const res = await axios.post(`${urlServer}/create-voice-gemini`, { content: plain, id })
       if (res.data.status === 404) throw new Error(res.data.message || 'Voice not found')
       return res.data.url
     })
-    const target = messages.value.find(e => e._id === message._id)
+
+    const target = messages.value.find(entry => entry._id === message._id)
     if (target) target.voice = url
+
     const ok = await playVoice(url)
     if (!ok) {
-      toast.error('Không phát được âm thanh. Kiểm tra quyền autoplay, CORS hoặc thử lại.', { position: 'top', duration: 5000 })
+      showToastError('Không phát được âm thanh. Kiểm tra quyền autoplay, CORS hoặc thử lại.', 5000)
     }
-  } catch (e: any) {
-    toast.error(e.message || 'Lỗi khi tạo âm thanh', { position: 'top', duration: 5000 })
+  } catch (error: any) {
+    showToastError(error?.message || 'Lỗi khi tạo âm thanh', 5000)
   }
 }
 
-async function playExistingVoice(message: ChatMessage) {
+const playExistingVoice = async (message: ChatMessage) => {
   if (!message.voice) return
+
   try {
     await primePlayback()
     const ok = await playVoice(message.voice)
     if (!ok) {
-      toast.error('Không phát được âm thanh', { position: 'top', duration: 4000 })
+      showToastError('Không phát được âm thanh', 4000)
     }
-  } catch (e: any) {
-    toast.error(e.message || 'Lỗi khi phát âm thanh', { position: 'top', duration: 4000 })
+  } catch (error: any) {
+    showToastError(error?.message || 'Lỗi khi phát âm thanh', 4000)
   }
 }
+
+onMounted(() => {
+  autoResize()
+})
 </script>
 
 <template>
