@@ -3,20 +3,15 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import LoginView from '@/views/Login.vue';
 import HomeView from '@/views/HomeView.vue';
-import Register from '@/views/Register.vue';
 import DashBoardView from '@/views/DashBoardView.vue';
 import Chat from '@/components/Chat.vue';
-import SettingChat from '@/components/SettingChat.vue';
-import StorageImage from '@/components/StorageImage.vue';
 import Payment from '@/components/Payment.vue';
 import ListUser from '@/components/ListUser.vue';
 import ListBot from '@/components/ListBot.vue';
 import ListChat from '@/components/ListChat.vue';
 import Verify from '@/components/Verify.vue';
-import SendMail from '@/components/SendMail.vue';
 import ChatBot from '@/components/Chat-bot.vue';
 import ForgotPassword from '@/components/ForgotPassword.vue';
-import ResetPassword from '@/components/ResetPassword.vue';
 import ChatImage from '@/components/Chat-image.vue';
 import About from '@/components/About.vue';
 import ChatHistory from '@/components/Chat-history.vue';
@@ -33,11 +28,8 @@ import ProductStoreView from '@/views/ProductStoreView.vue';
 const routes = [
   { path: '/', component: HomeView, meta: { public: true } },
   { path: '/login', component: LoginView, meta: { public: true } },
-  { path: '/register', component: Register, meta: { public: true } },
   { path: '/verify', component: Verify, meta: { public: true } },
-  { path: '/sendmail', component: SendMail, meta: { public: true } },
   { path: '/forgot-password', component: ForgotPassword, meta: { public: true } },
-  { path: '/reset-password', component: ResetPassword, meta: { public: true } },
   { path: '/about', component: About, meta: { public: true } },
 
   // QUAN TRỌNG: callback là public
@@ -52,8 +44,6 @@ const routes = [
       { path: 'list-products', component: ListProducts },
       { path: 'chat', component: Chat },
       { path: 'profile', component: Account },
-      { path: 'chatbox/setting', component: SettingChat },
-      { path: 'chatbox/store', component: StorageImage },
       { path: 'payment', component: Payment },
   { path: 'store-products', component: ProductStoreView },
       { path: 'list-user', component: ListUser },
