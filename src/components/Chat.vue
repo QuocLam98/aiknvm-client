@@ -76,13 +76,13 @@ const isGptModel = computed(() => ['gpt-5', 'gpt-5-mini'].includes(selectedModel
 const hasAttachment = computed(() => Boolean(previewFile.value))
 
 const GEMINI_MODELS = [
-  { value: 'gemini-2.5-flash', label: 'Gemini Flash' },
-  { value: 'gemini-2.5-pro', label: 'Gemini Pro' },
+  { value: 'gemini-2.5-flash', label: 'Gemini Nhanh' },
+  { value: 'gemini-2.5-pro', label: 'Gemini Sâu' },
 ]
 
 const GPT_MODELS = [
-  { value: 'gpt-5', label: 'GPT-5' },
-  { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+  { value: 'gpt-5', label: 'Chatgpt (OpenAI) pro' },
+  { value: 'gpt-5-mini', label: 'Chatgpt (OpenAI) mini' },
 ]
 
 const availableModels = computed(() => {
